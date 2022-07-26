@@ -30,7 +30,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 # Typing
-from typing import Union, Sequence, Any, Hashable, Callable, TypeVar
+from typing import Union, Sequence, Any, Callable, TypeVar
 
 T = TypeVar('T')
 
@@ -88,7 +88,7 @@ def cat(draw: DrawFn, cat_desc: Any, base_st: st.SearchStrategy[T]) -> st.Search
     return draw(st.tuples(base_st, __just__(cat_desc)))
 
 @st.composite
-def cats(draw: DrawFn) -> st.SearchStrategy[dict]:
+def cats(draw: DrawFn) -> st.SearchStrategy[dict[str, Any]]:
     """
     Within the given test run always returns the shared dictionary
     object where resulting categories are exposed.
@@ -101,7 +101,7 @@ def cats(draw: DrawFn) -> st.SearchStrategy[dict]:
     return draw(st.shared(__just__({}), key=CATS_SPACE_KEY))
 
 @st.composite
-def getcat(draw: DrawFn, class_name: Hashable) -> Any:
+def getcat(draw: DrawFn, class_name: str) -> Any:
     """
     Extracts the named category descriptor from the shared dictionary
     where the resulting categories are exposed.
@@ -117,7 +117,7 @@ def getcat(draw: DrawFn, class_name: Hashable) -> Any:
     return draw(cats())[class_name]
 
 @st.composite
-def classify(draw: DrawFn, class_name: Hashable, base_st: st.SearchStrategy[tuple[T, Any]]) -> st.SearchStrategy[T]:
+def classify(draw: DrawFn, class_name: str, base_st: st.SearchStrategy[tuple[T, Any]]) -> st.SearchStrategy[T]:
     """
     Extracts the original values from value-category tuples produced
     by the :func:cat strategy while exposing the corresponding
@@ -174,7 +174,7 @@ def classify(draw: DrawFn, class_name: Hashable, base_st: st.SearchStrategy[tupl
     return catval[0]
 
 @st.composite
-def subdivide(draw: DrawFn, class_name: Hashable, *onto: st.SearchStrategy[tuple[T, Any]]) -> st.SearchStrategy[T]:
+def subdivide(draw: DrawFn, class_name: str, *onto: st.SearchStrategy[tuple[T, Any]]) -> st.SearchStrategy[T]:
     """
     Implements the behavior of :func:classify + :func:st.one_of.
     I.e., instead of writing
