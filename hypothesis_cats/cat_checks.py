@@ -180,6 +180,8 @@ def tryExCat(ctg: Any) -> Optional[ExCat]:
     exctg: Optional[ExCat] = None
     if isinstance(ctg, ExCat):
         exctg = ctg
+    elif isinstance(ctg, Cat):
+        exctg = ExCat(ctg.name, ctg.comment)
     elif isinstance(ctg, dict):
         exctg = ExCat.from_dict(ctg)
 
