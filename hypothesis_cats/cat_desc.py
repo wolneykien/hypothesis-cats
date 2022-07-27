@@ -38,7 +38,7 @@ class Cat():
 
         :param comment: The comment or a description for it.
 
-        :raises ValueError: If the name is empty.
+        :raises ValueError: If name is empty.
         """
         if not name:
             raise ValueError('Category name should not be empty!')
@@ -56,6 +56,24 @@ class Cat():
 
     @classmethod
     def from_dict(cls, d: dict) -> 'Cat':
+        """
+        Tries to create the :class:Cat from a dictionary.
+        The dictionary has to define a value under the ``'name'`` key.
+        The optional ``'comment'`` value, if such key is present, is
+        also used. The other values in the dictionary are silently
+        ignored.
+
+        :param d: A dictionary with at least ``'name'`` and,
+            optionally, ``'comment'`` keys.
+
+        :return: The fresh :class:Cat: instance with name and comment
+            taken from the dictionary.
+
+        :raises KeyError: If there is no ``'name'`` key in the
+            supplied dictionary.
+
+        :raises ValueError: If the value ``'name'`` is empty.
+        """
         _d = {}
         _d['name'] = d['name']
         if 'comment' in d:

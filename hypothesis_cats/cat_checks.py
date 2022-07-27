@@ -32,12 +32,30 @@ from .cat_desc import Cat
 from .cat_strategies import cats
 
 class GuardedRaisesDict(TypedDict):
+    """
+    A helper class defining the dictionary layout for parsing
+    ``'raises': { ... }`` dictionaries in the category declarations.
+    """
     err: type[Exception]
     pattern: Union[str, Pattern]
     requires: dict[str, str]
 
 def tryCat(ctg: Any) -> Optional[Cat]:
     """
+    Returns the supplied :param:ctg value as is, if it's already a
+    :class:Cat value. Otherwise, there is a chance to build one
+    if :param:ctg happens to be a dictionary.
+
+    :param ctg: A :class:Cat or a dictionary with at least the
+        ``'name'`` key.
+
+    :return: A :class:Cat value corresponding to the supplied
+        argument.
+
+    :raises KeyError: If there is no ``'name'`` key in the
+        supplied dictionary.
+
+    :raises ValueError: If the value ``'name'`` is empty.
     """
     ctgobj: Optional[Cat] = None
     if isinstance(ctg, Cat):
@@ -49,6 +67,8 @@ def tryCat(ctg: Any) -> Optional[Cat]:
 
 class GuardedRaises():
     """
+    A class representing an :class:Exception exceptation, declared by
+    a :class:ExCat category.
     """
 
     def __init__(self,
@@ -56,6 +76,23 @@ class GuardedRaises():
                  pattern: Union[None, str, Pattern] = None,
                  requires: Union[None, dict[str, str]] = None):
         """
+        :param err: An :class:Exception type that is expected to be
+            raised by the code under test if the value of the
+            corresponding parameter falls into the surrounding
+            category (i.e. the category that declares this
+            expectation).
+
+        :param pattern: A string with a regular expression or an
+            already compiled :class:re.Pattern which is used to check
+            the error message. If the match is unsuccessful that the
+            exception expectation is also not met.
+
+        :param requires: A string-string dictionary declaring
+            category names of values of other classes. The declared
+            exception is only expected if the requirements are empty
+            or are met.
+
+        :raises ValueError: If no exception type was supplied.
         """
         if not err:
             raise ValueError('An exception type should be specified!')
@@ -66,6 +103,20 @@ class GuardedRaises():
 
     def isExpected(self, ex: Exception, cts: dict[str, Any]) -> bool:
         """
+        Checks if the given exception is expected under conditions,
+        determined by the supplied class-category layout.
+
+        :param ex: The :class:Exception object to examine.
+
+        :param cts: The category layout normally exposed by the
+            :func:.cat_strategies.classify and
+            :func:.cat_strategies.subdivide functions and accessed
+            via the :func:.cat_strategies.cats function.
+
+        :return: ``True`` if the supplied exception object matches
+            the declared type and regular expression, and all
+            requirements, if any, are met by the supplied
+            category layout. ``False`` otherwise.
         """
         if isinstance(ex, self.err):
             if self.pattern:
@@ -74,6 +125,18 @@ class GuardedRaises():
         return False
 
     def checkReqs(self, cts: dict[str, Any]) -> bool:
+        """
+        Checks that all requirements, if any, are met by the supplied
+        class-category layout.
+
+        :param cts: The category layout normally exposed by the
+            :func:.cat_strategies.classify and
+            :func:.cat_strategies.subdivide functions and accessed
+            via the :func:.cat_strategies.cats function.
+
+        :return: ``True`` if all requirements are met or no
+            requirements are declared. ``False`` otherwise.
+        """
         if self.requires:
             for r in self.requires:
                 if self.requires[r]:
@@ -91,6 +154,11 @@ class GuardedRaises():
 
     def __repr__(self) -> str:
         """
+        Returns the string representation of this expectation.
+
+        :return: A string consisting of the exception class name
+            and the optional regular expression. For instance:
+            ``TypeError(/^Name/)``.
         """
         estr = self.err.__name__
 
@@ -102,6 +170,8 @@ class GuardedRaises():
 class ExCat(Cat):
     """
     A category descriptor with exception expectations.
+    With the use of :class:CatChecker can be replaced by the
+    corresponding dictionary object.
     """
 
     def __init__(self,
@@ -119,6 +189,20 @@ class ExCat(Cat):
                      ]
                  ] = None):
         """
+        :param name: The name of the category.
+
+        :param comment: The comment or a description for it.
+
+        :param raises: Accepts an :class:Exception type,
+            a :class:GuardedRaises object or a corresponding
+            dictionary object or a sequence of any of such
+            values. For all supplied :class:Exception types
+            corresponding :class:GuardedRaises objects are
+            constructed automatically.
+
+        :raises ValueError: If name is empty or no exception type
+            was specified in one or more dictionary objects passed
+            to :param:raises.
         """
         super().__init__(name, comment)
 
@@ -136,6 +220,18 @@ class ExCat(Cat):
                          GuardedRaisesDict
                      ]):
         """
+        Appends the given single exception expectation to the list
+        of the expected raises.
+
+        :param raises: Accepts an :class:Exception type,
+            a :class:GuardedRaises object or a corresponding
+            dictionary object.
+
+        :raises TypeError: If it has failed to interpret the given
+            :param:raises object.
+
+        :raises ValueError: If no exception type was specified in the
+            dictionary object passed to :param:raises.
         """
         if isinstance(raises, type) and \
                issubclass(raises, Exception):
@@ -145,10 +241,24 @@ class ExCat(Cat):
         elif isinstance(raises, GuardedRaises):
             self.raises.append(raises)
         else:
-            raise TypeError('appendRaises(r) expects an exception type or a GuardedRaises optionallly represented by a plain dictionary.')
+            raise TypeError('appendRaises(r) expects an exception type or a GuardedRaises object optionallly represented by a plain dictionary.')
 
     def isExpected(self, ex: Exception, cts: dict[str, Any]) -> bool:
         """
+        Checks if the given exception is expected under conditions,
+        determined by the supplied class-category layout.
+
+        :param ex: The :class:Exception object to examine.
+
+        :param cts: The category layout normally exposed by the
+            :func:.cat_strategies.classify and
+            :func:.cat_strategies.subdivide functions and accessed
+            via the :func:.cat_strategies.cats function.
+
+        :return: ``True`` if the supplied exception object is matched
+            by *any* of the exception expectations declared for this
+            category that the corresponding requirements, if any, are
+            met by the supplied category layout. ``False`` otherwise.
         """
         for r in self.raises:
             if r.isExpected(ex, cts):
@@ -158,6 +268,17 @@ class ExCat(Cat):
 
     def expectedRaises(self, cts: dict[str, Any]) -> List[GuardedRaises]:
         """
+        Returns the list of all exception expectation whose
+        requirements are met by the supplied category layout.
+
+        :param cts: The category layout normally exposed by the
+            :func:.cat_strategies.classify and
+            :func:.cat_strategies.subdivide functions and accessed
+            via the :func:.cat_strategies.cats function.
+
+        :return: The, possible empty, list of exception expectation
+            objects whose requirements are met by the supplied
+            category layout.
         """
         expected: List[GuardedRaises] = []
         for r in self.raises:
@@ -168,6 +289,25 @@ class ExCat(Cat):
 
     @classmethod
     def from_dict(cls, d: dict) -> 'ExCat':
+        """
+        Tries to create the :class:ExCat from a dictionary.
+        The dictionary has to define a value under the ``'name'`` key.
+        The optional ``'comment'`` and ``'raises'`` values, if such
+        keys are is present, are also used. The other values in the
+        dictionary are silently ignored.
+
+        :param d: A dictionary with at least ``'name'`` and,
+            optionally, ``'comment'`` and ``'raises'`` keys.
+
+        :return: The fresh :class:ExCat: instance with name, comment
+            and the list of exception expectations taken from the
+            dictionary.
+
+        :raises KeyError: If there is no ``'name'`` key in the
+            supplied dictionary.
+
+        :raises ValueError: If the value ``'name'`` is empty.
+        """
         _d = {}
         _d['name'] = d['name']
         if 'comment' in d:
@@ -178,6 +318,22 @@ class ExCat(Cat):
 
 def tryExCat(ctg: Any) -> Optional[ExCat]:
     """
+    Returns the supplied :param:ctg value as is, if it's already
+    an :class:ExCat value. Otherwise, there is a chance to build one
+    if :param:ctg happens to be a :class:Cat object or a dictionary.
+
+    :param ctg: An :class:ExCat, a :class:Cat or a dictionary with at
+        least the ``'name'`` key.
+
+    :return: An :class:ExCat value corresponding to the supplied
+        argument.
+
+    :raises KeyError: If there is no ``'name'`` key in the
+        supplied dictionary.
+
+    :raises ValueError: If the value ``'name'`` is empty or no
+        exception type was specified in one or more
+        ``'raises': {...}`` dictionary objects.
     """
     exctg: Optional[ExCat] = None
     if isinstance(ctg, ExCat):
@@ -191,21 +347,92 @@ def tryExCat(ctg: Any) -> Optional[ExCat]:
 
 class CatChecker():
     """
+    A `context manager <https://docs.python.org/3/library/stdtypes.html#typecontextmanager>`_
+    implementation that could be used to check for expected exceptions
+    while testing modules, classes and functions. The example usage
+    is as follows:
+
+    .. code-block:: python
+
+       from hypothesis import given
+       from hypothesis.strategies import integers, text
+       from hypothesis_cats import subdivide, cat, cats, CatChecker
+
+       class User():
+           def __init__(self, name: str, role: str = None, age: int = None):
+               if not name:
+                   raise TypeError('Name should not be empty!')
+               self.name = name
+
+               if role:
+                   self.role = role
+                   return # <---------- BUG!
+
+               if age != None:
+                   if age <= 0:
+                       raise ValueError('Age should be a positive number!')
+                   self.age = age
+
+       @given(name=subdivide("name",
+                   cat({ 'name': "empty",
+                         'raises': {
+                             'err': TypeError,
+                             'pattern': '^Name'
+                         }
+                       }, text(max_size=0)),
+                   cat({ 'name': "non-empty" },
+                       text(min_size=1))),
+              role=text(),
+              age=subdivide("age",
+                   cat({ 'name': "positive" },
+                       integers(min_value=1)),
+                   cat({ 'name': "non-positive",
+                         'raises': {
+                             'err': ValueError,
+                             'pattern': '^Age',
+                         }
+                       }, integers(max_value=0))),
+              cts=cats()
+       )
+       def test_user(name, role, age, cts):
+           with CatChecker(cts):
+               u = User(name, role, age)
+
+    With the use of ``'requires': { ... }`` it's possible to state that
+    the age to role relation in the ``User`` class constructor is not a
+    bug, but the desired behavior. For a complete example see the
+    ``validator.py`` file from the ``examples/`` directory.
     """
 
     def __init__(self, cts: dict[str, Any]):
         """
+        :param: The category layout normally exposed by the
+            :func:.cat_strategies.classify and
+            :func:.cat_strategies.subdivide functions and accessed
+            via the :func:.cat_strategies.cats function.
         """
         self.cts = cts
 
     def __enter__(self) -> 'CatChecker':
         """
+        Returns this context manager object. This function is an entry
+        point and should not be directly invoked. The return value
+        could be get via the ``as`` part of the ``with`` expression.
+
+        :return: The dictionary representing all currently expected
+            exceptions.
         """
         return self
 
     def __exit__(self, exc_type: type[Exception],
                  exc_value: Exception, traceback) -> bool:
         """
+        The exit point of the context manager. Controls, whether the
+        raised exception, if any, should propagate further or, if it
+        is an expected exception, should be suppressed.
+
+        :return: ``True`` if the given exception happens to be one
+        of the expected exceptions.
         """
         if exc_value:
             for cls in self.cts:
@@ -223,6 +450,14 @@ class CatChecker():
 
     def expectedRaises(self) -> dict[str, List[GuardedRaises]]:
         """
+        Returns the dictionary representing all exceptions,
+        expected under the current category layout (i.e. the
+        categories of values currently given for the test)
+        with their relation to particular values (more precicely,
+        the declared classes of values).
+
+        :return: The dictionary representing all currently expected
+            exceptions as described above.
         """
         expected: dict[str, List[GuardedRaises]] = {}
         for cls in self.cts:
