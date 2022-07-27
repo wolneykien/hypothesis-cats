@@ -193,8 +193,8 @@ class CatChecker():
         """
         return self
 
-    def __exit__(self, exc_type, exc_value: Exception,
-                 traceback) -> bool:
+    def __exit__(self, exc_type: type[Exception],
+                 exc_value: Exception, traceback) -> bool:
         """
         """
         if exc_value:
