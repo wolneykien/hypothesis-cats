@@ -169,8 +169,8 @@ class ExCat(Cat):
         return expected
 
     @classmethod
-    def from_dict(cls, d: dict) -> ExCat:
-        return ExCat(**d)
+    def from_dict(cls, d: dict) -> 'ExCat':
+        return cls(**d)
 
 def tryExCat(ctg: Any) -> Optional[ExCat]:
     """

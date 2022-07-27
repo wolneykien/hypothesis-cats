@@ -55,5 +55,5 @@ class Cat():
         return self.name
 
     @classmethod
-    def from_dict(cls, d: dict) -> Cat:
-        return Cat(**d)
+    def from_dict(cls, d: dict) -> 'Cat':
+        return cls(**_d)
