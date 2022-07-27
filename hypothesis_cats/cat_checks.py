@@ -52,7 +52,7 @@ class GuardedRaises():
     """
 
     def __init__(self,
-                 err: type[Exception],
+                 err: Union[None, type[Exception]] = None,
                  pattern: Union[None, str, Pattern] = None,
                  requires: Union[None, dict[str, str]] = None):
         """
