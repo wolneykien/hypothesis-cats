@@ -97,7 +97,7 @@ class GuardedRaises():
         estr = self.err.__name__
 
         if self.pattern:
-            estr = estr + "('" + self.pattern.pattern + "')"
+            estr = estr + "(/" + self.pattern.pattern + "/)"
 
         return estr
 
