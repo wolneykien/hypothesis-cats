@@ -144,17 +144,6 @@ def classify(draw: DrawFn, class_name: str, base_st: st.SearchStrategy[tuple[T, 
        def my_sgn(x):
            return x > 0
        
-       @given(x=integers())
-       def test_naive(x):
-           if x > 0:
-               assert my_sgn(x)
-           else:
-               assert not my_sgn(x)
-       
-       # What's wrong with the test function above is that it tries
-       # to check my_sgn() correctness using _the same logic_ as
-       # used in my_sgn() itself! Let's try to get things better:
-       
        @given(
            x=classify("x", one_of(
                cat("positive", integers(min_value=1)),
@@ -162,11 +151,16 @@ def classify(draw: DrawFn, class_name: str, base_st: st.SearchStrategy[tuple[T, 
            )),
            cts=cats()
        )
-       def test_better(x, cts):
+       def test_sgn(x, cts):
            if cts["x"] == "positive":
                assert my_sgn(x)
            else:
                assert not my_sgn(x)
+
+    While the same effect can be achieved with the use of just two
+    corresponding separate test functions, it might not be so easy to
+    write the set of test functions for a more complex functionality.
+    See :class:.cat_checks.CatChecker for an example.
     """
     cts = draw(cats())
     catval = draw(base_st)
