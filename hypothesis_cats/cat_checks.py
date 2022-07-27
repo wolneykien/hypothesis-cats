@@ -166,6 +166,12 @@ class ExCat(Cat):
 
     @classmethod
     def from_dict(cls, d: dict) -> 'ExCat':
+        _d = {}
+        _d['name'] = d['name']
+        if 'comment' in d:
+            _d['comment'] = d['comment']
+        if 'raises' in d:
+            _d['raises'] = d['raises']
         return cls(**d)
 
 def tryExCat(ctg: Any) -> Optional[ExCat]:

@@ -56,4 +56,8 @@ class Cat():
 
     @classmethod
     def from_dict(cls, d: dict) -> 'Cat':
+        _d = {}
+        _d['name'] = d['name']
+        if 'comment' in d:
+            _d['comment'] = d['comment']
         return cls(**_d)
