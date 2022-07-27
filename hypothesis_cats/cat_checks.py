@@ -62,18 +62,14 @@ class GuardedRaises():
             self.pattern = re.compile(pattern)
         self.requires = requires
 
-    def isExpected(self, cts: dict[str, Any],
-                   ex: Union[None, Exception] = None) -> bool:
+    def isExpected(self, ex: Exception, cts: dict[str, Any]) -> bool:
         """
         """
-        if ex:
-            if isinstance(ex, self.err):
-                if self.pattern:
-                    if self.pattern.match(str(ex)):
-                        return self.checkReqs(cts)
-            return False
-        else:
-            return self.checkReqs(cts)
+        if isinstance(ex, self.err):
+            if self.pattern:
+                if self.pattern.match(str(ex)):
+                    return self.checkReqs(cts)
+        return False
 
     def checkReqs(self, cts: dict[str, Any]) -> bool:
         if self.requires:
@@ -153,7 +149,7 @@ class ExCat(Cat):
         """
         """
         for r in self.raises:
-            if r.isExpected(cts, ex):
+            if r.isExpected(ex, cts):
                 return True
 
         return False
@@ -163,7 +159,7 @@ class ExCat(Cat):
         """
         expected: List[GuardedRaises] = []
         for r in self.raises:
-            if r.isExpected(cts):
+            if r.checkReqs(cts):
                 expected.append(r)
 
         return expected
