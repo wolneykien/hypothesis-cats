@@ -187,7 +187,7 @@ class CatChecker():
     """
     """
 
-    def __init__(self, cts: dict[str, Any] = cats().example()):
+    def __init__(self, cts: dict[str, Any]):
         """
         """
         self.cts = cts
