@@ -57,6 +57,8 @@ class GuardedRaises():
                  requires: Union[None, dict[str, str]] = None):
         """
         """
+        if not err:
+            raise ValueError('An exception type should be specified!')
         self.err = err
         if pattern:
             self.pattern = re.compile(pattern)
