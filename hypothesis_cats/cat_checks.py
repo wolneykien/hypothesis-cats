@@ -188,10 +188,10 @@ class CatChecker():
         """
         self.cts = cts
 
-    def __enter__(self) -> dict[str, Any]:
+    def __enter__(self) -> 'CatChecker':
         """
         """
-        return self.cts
+        return self
 
     def __exit__(self, exc_type, exc_value: Exception,
                  traceback) -> bool:
