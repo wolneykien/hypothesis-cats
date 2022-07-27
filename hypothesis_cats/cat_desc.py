@@ -53,3 +53,7 @@ class Cat():
         :return: Name of the category.
         """
         return self.name
+
+    @classmethod
+    def from_dict(cls, d: dict):
+        return Cat(**d)

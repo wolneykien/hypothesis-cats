@@ -36,11 +36,23 @@ class GuardedRaisesDict(TypedDict):
     pattern: Union[str, Pattern]
     requires: dict[str, str]
 
+def tryCat(ctg: Any) -> Optional[Cat]:
+    """
+    """
+    ctgobj: Optional[Cat] = None
+    if isinstance(ctg, Cat):
+        ctgobj = ctg
+    elif isinstance(ctg, dict):
+        ctgobj = Cat.from_dict(ctg)
+
+    return ctgobj
+
 class GuardedRaises():
     """
     """
 
-    def __init__(self, err: type[Exception],
+    def __init__(self,
+                 err: type[Exception],
                  pattern: Union[None, str, Pattern] = None,
                  requires: Union[None, dict[str, str]] = None):
         """
@@ -70,8 +82,9 @@ class GuardedRaises():
                     if r not in cts:
                         return False
                     else:
-                        if isinstance(cts[r], Cat):
-                            if self.requires[r] != cts[r].name:
+                        exctg = tryCat(cts[r])
+                        if exctg:
+                            if self.requires[r] != exctg.name:
                                 return False
                         elif self.requires[r] != str(cts[r]):
                             return False
@@ -93,7 +106,8 @@ class ExCat(Cat):
     A category descriptor with exception expectations.
     """
 
-    def __init__(self, name: str = None,
+    def __init__(self,
+                 name: str = None,
                  comment: Optional[str] = None,
                  raises: Union[
                      None,
@@ -154,7 +168,22 @@ class ExCat(Cat):
 
         return expected
 
-class ExCats():
+    @classmethod
+    def from_dict(cls, d: dict):
+        return ExCat(**d)
+
+def tryExCat(ctg: Any) -> Optional[ExCat]:
+    """
+    """
+    exctg: Optional[ExCat] = None
+    if isinstance(ctg, ExCat):
+        exctg = ctg
+    elif isinstance(ctg, dict):
+        exctg = ExCat.from_dict(ctg)
+
+    return exctg
+
+class CatChecker():
     """
     """
 
@@ -174,8 +203,9 @@ class ExCats():
         """
         if exc_value:
             for cls in self.cts:
-                if isinstance(self.cts[cls], ExCat):
-                    if self.cts[cls].isExpected(exc_value, self.cts):
+                exctg = tryExCat(self.cts[cls])
+                if exctg:
+                    if exctg.isExpected(exc_value, self.cts):
                         return True
             return False
         else:
@@ -190,7 +220,10 @@ class ExCats():
         """
         expected: dict[str, List[GuardedRaises]] = {}
         for cls in self.cts:
-            if isinstance(self.cts[cls], ExCat):
-                expected[cls] = self.cts[cls].expectedRaises(self.cts)
+            exctg = tryExCat(self.cts[cls])
+            if exctg:
+                exlist = exctg.expectedRaises(self.cts)
+                if exlist:
+                    expected[cls] = exlist
 
         return expected
