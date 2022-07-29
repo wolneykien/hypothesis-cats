@@ -48,7 +48,7 @@ except AttributeError:
     DrawFn = Callable[[st.SearchStrategy[T]], T]
 
 # The module
-CATS_SPACE_KEY = '_hypothesis_cats_space'
+CATS_LAYOUT_KEY = '_hypothesis_cats_layout'
 
 @st.composite
 def __just__(draw: DrawFn, val: Any) -> Any:
