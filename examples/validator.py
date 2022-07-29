@@ -19,7 +19,7 @@
 
 from hypothesis import given
 from hypothesis.strategies import integers, text
-from hypothesis_cats import subdivide, cat, cats, CatChecker
+from hypothesis_cats import subdivide, cat, cats, CatChecker, ExCat
 # import pytest
 
 class User():
@@ -66,37 +66,44 @@ class User():
 # # such test code is somehow meaningless: it uses the same logic as
 # # the prameter validator itself.
 
-@given(name=subdivide("name",
-            cat({ 'name': "empty",
-                  'raises': {
-                      'err': TypeError,
-                      'pattern': '^Name'
-                  }
-                }, text(max_size=0)),
-            cat({ 'name': "non-empty" },
-                text(min_size=1))),
-       role=subdivide("role",
-            cat({ 'name': "empty" },
-                text(max_size=0)),
-            cat({ 'name': "non-empty" },
-                text(min_size=1))),
-       age=subdivide("age",
-            cat({ 'name': "positive" },
-                integers(min_value=1)),
-            cat({ 'name': "non-positive",
-                  'raises': {
-                      'err': ValueError,
-                      'pattern': '^Age',
+ctg_defs = {
+    'name': {
+        'empty': ExCat(
+            name="empty",
+            raises={
+                'err': TypeError,
+                'pattern': '^Name'
+            }
+        )
+    },
+    'age': {
+        'non-positive': ExCat(
+            name="non-positive",
+            raises={
+                'err': ValueError,
+                'pattern': '^Age',
 # Uncomment to make the test pass:
-#                      'requires': {
-#                          'role': "empty"
-#                      }
-                  }
-                }, integers(max_value=0))),
+#                 'requires': {
+#                     'role': "empty"
+#                 }
+            }
+        )
+    }
+}
+
+@given(name=subdivide("name",
+            cat("empty", text(max_size=0)),
+            cat("non-empty", text(min_size=1))),
+       role=subdivide("role",
+            cat("empty", text(max_size=0)),
+            cat("non-empty", text(min_size=1))),
+       age=subdivide("age",
+            cat("positive", integers(min_value=1)),
+            cat("non-positive", integers(max_value=0))),
        cts=cats()
 )
 def test_all_better(name, role, age, cts):
-    with CatChecker(cts):
+    with CatChecker(cts, ctg_defs):
         u = User(name, role, age)
 
 if __name__ == "__main__":

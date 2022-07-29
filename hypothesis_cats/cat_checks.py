@@ -41,17 +41,17 @@ class GuardedRaisesDict(TypedDict):
     pattern: Union[str, Pattern]
     requires: dict[str, str]
 
-def tryCat(ctg: Any) -> Optional[Cat]:
+def tryGetCatName(ctg: Any) -> str:
     """
-    Returns the supplied ``ctg`` value as is, if it's already a
-    :class:`.cat_desc.Cat` value. Otherwise, there is a chance to
-    build one if ``ctg`` happens to be a dictionary.
+    Tryies to return the name of the given category. If ``ctg`` is a
+    a :class:`.cat_desc.Cat` value, the functions returns ``ctg.name``.
+    Otherwise, if the given object is a dictionary, it tries to access
+    its ``name`` key. Otherwise, a string representation of the whole
+    object as ``str(ctg)`` is returned.
 
-    :param ctg: A :class:`.cat_desc.Cat` or a dictionary with at
-        least the ``'name'`` key.
+    :param ctg: A category name or a descriptor.
 
-    :return: A :class:`.cat_desc.Cat` value corresponding to the
-        supplied argument.
+    :return: The name of the category as described above.
 
     :raises KeyError: If there is no ``'name'`` key in the
         supplied dictionary.
@@ -64,7 +64,10 @@ def tryCat(ctg: Any) -> Optional[Cat]:
     elif isinstance(ctg, dict):
         ctgobj = Cat.from_dict(ctg)
 
-    return ctgobj
+    if ctgobj:
+        return ctgobj.name
+    else:
+        return str(ctg)
 
 class GuardedRaises():
     """
@@ -144,11 +147,7 @@ class GuardedRaises():
                     if r not in cts:
                         return False
                     else:
-                        exctg = tryCat(cts[r])
-                        if exctg:
-                            if self.requires[r] != exctg.name:
-                                return False
-                        elif self.requires[r] != str(cts[r]):
+                        if self.requires[r] != tryGetCatName(cts[r]):
                             return False
 
         return True
@@ -318,21 +317,30 @@ class ExCat(Cat):
             _d['raises'] = d['raises']
         return cls(**d)
 
-def tryExCat(ctg: Any) -> Optional[ExCat]:
+def tryExCat(ctg: Any, ctg_defs: Optional[dict[str, ExCat]] = None) -> Optional[ExCat]:
     """
     Returns the supplied ``ctg`` value as is, if it's already
-    an :class:`ExCat` value. Otherwise, there is a chance to build one
-    if ``ctg`` happens to be a :class:`.cat_desc.Cat` object or a
-    dictionary.
+    an :class:`ExCat` value. Otherwise, there is a chance to get a
+    referenced one from the separated set of category definitions,
+    if any, or to build a :class:`ExCat` object if ``ctg`` happens
+    to be a dictionary.
 
-    :param ctg: An :class:`ExCat,` a :class:`.cat_desc.Cat` or a
-        dictionary with at least the ``'name'`` key.
+    :param ctg: A category name, referencing its definition in the
+        ``ctg_defs`` dictionary, or a category descriptor in the form
+        of a :class:`ExCat` object or a dictionary.
+
+    :param ctg_defs: The dictionary with category descriptors.
+        See :class:`CatChecker` for details. Note, however, that
+        rather than accept a class-category layout, this function
+        expects a set of categories defined for a single particular
+        class of values.
 
     :return: An :class:`ExCat` value corresponding to the supplied
         argument.
 
-    :raises KeyError: If there is no ``'name'`` key in the
-        supplied dictionary.
+    :raises KeyError: If the referenced category isn't found in the
+        supplied ``ctg_defs`` dictionary or if there is no ``'name'``
+        key in the category descriptor passed in ``ctg``.
 
     :raises ValueError: If the value ``'name'`` is empty or no
         exception type was specified in one or more
@@ -346,7 +354,14 @@ def tryExCat(ctg: Any) -> Optional[ExCat]:
     elif isinstance(ctg, dict):
         exctg = ExCat.from_dict(ctg)
 
-    return exctg
+    if exctg:
+        return exctg
+    elif ctg_defs:
+        ctgname = str(ctg)
+        if ctgname in ctg_defs:
+            return ctg_defs[ctgname]
+
+    return None
 
 class CatChecker():
     """
@@ -407,17 +422,37 @@ class CatChecker():
     ``validator.py`` file from the ``examples/`` directory.
     """
 
-    def __init__(self, cts: dict[str, Any]):
+    def __init__(self, cts: dict[str, Any],
+                 ctg_defs: Optional[dict[str, dict[str, ExCat]]] = None):
         """
         :param cts: The category layout normally exposed by the
             :func:`.cat_strategies.classify` and
             :func:`.cat_strategies.subdivide` functions and accessed
-            via the :func:`.cat_strategies.cats` function. Note, that
-            the category descriptors in the layout should not
-            necessary be :class:`ExCat` objects, but may be
-            represented by corresponding dictionaries.
+            via the :func:`.cat_strategies.cats` function. The
+            categories in the layout can be represented by complex
+            :class:`ExCat` descriptors (possible, in the form of
+            dictionaries) or by simple strings referencing the
+            corresponding descriptions defined elsewhere. In the
+            latter case that definitions should be passed separately
+            wiin the ``ctg_defs`` param.
+
+        :param ctg_defs: The category definitions. For convenience,
+            complex descriptors describing categories along with
+            exception expectations and their relationships might be
+            defined separately from the testing strategies. You can
+            use :func:`parseCats` to get the right :class:`ExCat`
+            descriptor dictionary from the plain dictionary.
+
+        :raises KeyError: If there is no ``'name'`` key in one of the
+            category descriptors passed in ``ctg_defs``.
+
+        :raises ValueError: If the value ``'name'`` is empty or no
+            exception type was specified in one or more
+            ``'raises': {...}`` dictionary objects in one of the
+            category descriptors passed in ``ctg_defs``.
         """
         self.cts = cts
+        self.ctg_defs = ctg_defs
 
     def __enter__(self) -> 'CatChecker':
         """
@@ -442,7 +477,7 @@ class CatChecker():
         """
         if exc_value:
             for cls in self.cts:
-                exctg = tryExCat(self.cts[cls])
+                exctg = self.tryGetCat(cls)
                 if exctg:
                     if exctg.isExpected(exc_value, self.cts):
                         return True
@@ -453,6 +488,22 @@ class CatChecker():
                 raise AssertionError('One of the following exceptions was expected: %s' % expected)
 
         return False
+
+    def tryGetCat(self, cls: str) -> Optional[ExCat]:
+        """
+        Tries to get the current category for the given class of
+        values using the class-category layout and an optional
+        dictionary with category descriptors that were passed upon
+        construction of this :class:`CatChecker` instance.
+
+        :param cls: The name of the value class.
+
+        :return: The corresponding category descriptor, if found.
+        """
+        if self.ctg_defs and cls in self.ctg_defs:
+            return tryExCat(self.cts[cls],
+                            ctg_defs=self.ctg_defs[cls])
+        return None
 
     def expectedRaises(self) -> dict[str, List[GuardedRaises]]:
         """
@@ -467,7 +518,7 @@ class CatChecker():
         """
         expected: dict[str, List[GuardedRaises]] = {}
         for cls in self.cts:
-            exctg = tryExCat(self.cts[cls])
+            exctg = self.tryGetCat(cls)
             if exctg:
                 exlist = exctg.expectedRaises(self.cts)
                 if exlist:
