@@ -19,7 +19,7 @@
 
 from hypothesis import given
 from hypothesis.strategies import integers, text
-from hypothesis_cats import subdivide, cat, cats, CatChecker, ExCat
+from hypothesis_cats import subdivide, cat, cats, CatChecker, ExCat, parseCats
 # import pytest
 
 class User():
@@ -66,20 +66,18 @@ class User():
 # # such test code is somehow meaningless: it uses the same logic as
 # # the prameter validator itself.
 
-ctg_defs = {
+ctg_defs = parseCats({
     'name': {
-        'empty': ExCat(
-            name="empty",
-            raises={
+        'empty': {
+            'raises': {
                 'err': TypeError,
                 'pattern': '^Name'
             }
-        )
+        }
     },
     'age': {
-        'non-positive': ExCat(
-            name="non-positive",
-            raises={
+        'non-positive': {
+            'raises': {
                 'err': ValueError,
                 'pattern': '^Age',
 # Uncomment to make the test pass:
@@ -87,9 +85,9 @@ ctg_defs = {
 #                     'role': "empty"
 #                 }
             }
-        )
+        }
     }
-}
+})
 
 @given(name=subdivide("name",
             cat("empty", text(max_size=0)),

@@ -420,10 +420,13 @@ class CatChecker():
     the age to role relation in the ``User`` class constructor is not a
     bug, but the desired behavior. For a complete example see the
     ``validator.py`` file from the ``examples/`` directory.
+
+    See :func:`parseCats` to learn how to write more compact
+    descriptors.
     """
 
     def __init__(self, cts: dict[str, Any],
-                 ctg_defs: Optional[dict[str, dict[str, ExCat]]] = None):
+                 ctg_defs: Optional[dict[str, dict[str, Union[Cat, ExCat, dict[str, Any]]]]] = None):
         """
         :param cts: The category layout normally exposed by the
             :func:`.cat_strategies.classify` and
@@ -446,13 +449,14 @@ class CatChecker():
         :raises KeyError: If there is no ``'name'`` key in one of the
             category descriptors passed in ``ctg_defs``.
 
-        :raises ValueError: If the value ``'name'`` is empty or no
-            exception type was specified in one or more
-            ``'raises': {...}`` dictionary objects in one of the
-            category descriptors passed in ``ctg_defs``.
+        :raises ValueError: Raises :class:`ValueError` for the same
+            cases as :func:`parseCats`.
         """
         self.cts = cts
-        self.ctg_defs = ctg_defs
+        if ctg_defs:
+            self.ctg_defs = parseCats(ctg_defs)
+        else:
+            self.ctg_defs = {}
 
     def __enter__(self) -> 'CatChecker':
         """
@@ -525,3 +529,70 @@ class CatChecker():
                     expected[cls] = exlist
 
         return expected
+
+def parseCats(desc_layout: dict[str, dict[str, Union[Cat, ExCat, dict[str, Any]]]]) -> dict[str, dict[str, ExCat]]:
+    """
+    Parses the given value-class -> catecory-descriptor dictionary.
+    The descriptors for named classes of values might be represented
+    by already constructed :class:`.cat_desc.Cat` and :class:`ExCat`
+    objects or by dictionaries. When using the dictionary form it's
+    possible to omit the ``name`` field: then the corresponding
+    key of the surrounding dictionary is used. For instance:
+
+    .. code-block:: python
+
+       ctg_defs = parseCats({
+           'name': {
+               'empty': {
+                   'raises': {
+                       'err': TypeError,
+                       'pattern': '^Name'
+                   }
+               }
+           },
+           'age': {
+               'non-positive': {
+                   'raises': {
+                       'err': ValueError,
+                       'pattern': '^Age',
+                        'requires': {
+                            'role': "empty"
+                        }
+                   }
+               }
+           }
+       })
+
+    :param desc_layout: A value-class -> catecory-descriptor
+        dictionary as described above.
+
+    :return: The corresponding value-class -> catecory-descriptor
+        dictionary with :class:`ExCat` descriptors.
+
+    :raises ValueError: If no exception type was specified in one
+        or more ``'raises': {...}`` dictionary objects or when
+        a name inside a category descriptor doesn't match the
+        key under which thay category is defined.
+    """
+    ret: dict[str, dict[str, ExCat]] = {}
+    for cls in desc_layout:
+        ret[cls] = {}
+        for ctgname in desc_layout[cls]:
+            exctg = None
+            ctg = desc_layout[cls][ctgname]
+            if isinstance(ctg, ExCat):
+                exctg = ctg
+            elif isinstance(ctg, Cat):
+                exctg = ExCat(ctg.name, ctg.comment)
+            else:
+                if 'name' in ctg:
+                    exctg = ExCat(**ctg)
+                else:
+                    exctg = ExCat(name=ctgname, **ctg)
+
+            if exctg.name != ctgname:
+                raise ValueError('A descriptor with name "%s" is specified under key "%s".')
+
+            ret[cls][ctgname] = exctg
+
+    return ret
