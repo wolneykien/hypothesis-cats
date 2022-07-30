@@ -19,7 +19,7 @@
 
 from hypothesis import given
 from hypothesis.strategies import integers, text
-from hypothesis_cats import subdivide, cat, cats, CatChecker, ExCat, parseCats
+from hypothesis_cats import CatChecker, given_divided
 # import pytest
 
 class User():
@@ -66,16 +66,22 @@ class User():
 # # such test code is somehow meaningless: it uses the same logic as
 # # the prameter validator itself.
 
-ctg_defs = parseCats({
-    'name': {
+@given_divided(
+    name={
         'empty': {
             'raises': {
                 'err': TypeError,
                 'pattern': '^Name'
-            }
-        }
+            },
+            'values': text(max_size=0)
+        },
+        'non-empty': text(min_size=1)
     },
-    'age': {
+    role={
+        'empty': text(max_size=0),
+        'non-empty': text(min_size=1)
+    },
+    age={
         'non-positive': {
             'raises': {
                 'err': ValueError,
@@ -84,24 +90,14 @@ ctg_defs = parseCats({
 #                 'requires': {
 #                     'role': "empty"
 #                 }
-            }
-        }
+            },
+            'values': integers(max_value=0)
+        },
+        'positive': integers(min_value=1)
     }
-})
-
-@given(name=subdivide("name",
-            cat("empty", text(max_size=0)),
-            cat("non-empty", text(min_size=1))),
-       role=subdivide("role",
-            cat("empty", text(max_size=0)),
-            cat("non-empty", text(min_size=1))),
-       age=subdivide("age",
-            cat("positive", integers(min_value=1)),
-            cat("non-positive", integers(max_value=0))),
-       cts=cats()
 )
-def test_all_better(name, role, age, cts):
-    with CatChecker(cts, ctg_defs):
+def test_all_better(name, role, age, _layout_, _desc_):
+    with CatChecker(_layout_, _desc_):
         u = User(name, role, age)
 
 if __name__ == "__main__":

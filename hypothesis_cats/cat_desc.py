@@ -24,7 +24,7 @@ strategy. This module defines utility classes for category
 descriptors.
 """
 
-from typing import Optional
+from typing import Optional, Mapping, Any
 
 class Cat():
     """
@@ -56,7 +56,7 @@ class Cat():
         return self.name
 
     @classmethod
-    def from_dict(cls, d: dict) -> 'Cat':
+    def from_dict(cls, d: Mapping[str, Any]) -> 'Cat':
         """
         Tries to create the :class:`Cat` from a dictionary.
         The dictionary has to define a value under the ``'name'`` key.

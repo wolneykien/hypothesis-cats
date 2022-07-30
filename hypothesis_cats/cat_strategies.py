@@ -31,7 +31,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 # Typing
-from typing import Union, Sequence, Any, Callable, TypeVar
+from typing import Union, Sequence, Any, Callable, TypeVar, Optional
 
 T = TypeVar('T')
 
@@ -49,6 +49,7 @@ except AttributeError:
 
 # The module
 CATS_LAYOUT_KEY = '_hypothesis_cats_layout'
+CATS_DESC_KEY = '_hypothesis_cats_desc'
 
 @st.composite
 def __just__(draw: DrawFn, val: Any) -> Any:
@@ -190,3 +191,24 @@ def subdivide(draw: DrawFn, class_name: str, *onto: st.SearchStrategy[tuple[T, A
     :return: The original values extracted from value-category tuples.
     """
     return draw(classify(class_name, st.one_of(*onto)))
+
+@st.composite
+def cats_desc(draw: DrawFn, desc: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    """
+    Within the given test run always returns the shared dictionary
+    object for category descriptors.
+
+    :param draw: A special function supplied by Hypothesis.
+
+    :param desc: Optional dictionary object with category descriptors.
+      If specified, then the shared dict is updated with values in
+      the given one.
+
+    :return: The shared dictionary for category descriptors.
+    """
+    if not desc:
+        desc = {}
+    shared_desc = draw(st.shared(__just__(desc), key=CATS_DESC_KEY))
+    if desc:
+        shared_desc.update(desc)
+    return shared_desc

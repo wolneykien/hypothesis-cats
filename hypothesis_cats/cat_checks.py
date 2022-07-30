@@ -25,7 +25,7 @@ based on categories of the given set of values.
 """
 
 from typing import Any, Optional, Union, Sequence, TypedDict, \
-    Callable, List, Pattern
+    Callable, List, Pattern, Mapping
 from collections.abc import Iterable
 import re
 
@@ -289,7 +289,7 @@ class ExCat(Cat):
         return expected
 
     @classmethod
-    def from_dict(cls, d: dict) -> 'ExCat':
+    def from_dict(cls, d: Mapping[str, Any]) -> 'ExCat':
         """
         Tries to create the :class:`ExCat` from a dictionary.
         The dictionary has to define a value under the ``'name'`` key.
@@ -317,7 +317,7 @@ class ExCat(Cat):
             _d['raises'] = d['raises']
         return cls(**_d)
 
-def tryExCat(ctg: Any, ctg_defs: Optional[dict[str, ExCat]] = None) -> Optional[ExCat]:
+def tryExCat(ctg: Any, ctg_defs: Optional[Mapping[str, ExCat]] = None) -> Optional[ExCat]:
     """
     Returns the supplied ``ctg`` value as is, if it's already
     an :class:`ExCat` value. Otherwise, there is a chance to get a
@@ -530,7 +530,7 @@ class CatChecker():
 
         return expected
 
-def parseCats(desc_layout: dict[str, dict[str, Union[Cat, ExCat, dict[str, Any]]]]) -> dict[str, dict[str, ExCat]]:
+def parseCats(desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]) -> Mapping[str, Mapping[str, ExCat]]:
     """
     Parses the given value-class -> catecory-descriptor dictionary.
     The descriptors for named classes of values might be represented
@@ -586,9 +586,9 @@ def parseCats(desc_layout: dict[str, dict[str, Union[Cat, ExCat, dict[str, Any]]
                 exctg = ExCat(ctg.name, ctg.comment)
             else:
                 if 'name' in ctg:
-                    exctg = ExCat(**ctg)
+                    exctg = ExCat.from_dict(ctg)
                 else:
-                    exctg = ExCat(name=ctgname, **ctg)
+                    exctg = ExCat.from_dict({ 'name': ctgname, **ctg })
 
             if exctg.name != ctgname:
                 raise ValueError('A descriptor with name "%s" is specified under key "%s".')
