@@ -315,7 +315,7 @@ class ExCat(Cat):
             _d['comment'] = d['comment']
         if 'raises' in d:
             _d['raises'] = d['raises']
-        return cls(**d)
+        return cls(**_d)
 
 def tryExCat(ctg: Any, ctg_defs: Optional[dict[str, ExCat]] = None) -> Optional[ExCat]:
     """
