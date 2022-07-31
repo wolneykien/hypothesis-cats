@@ -423,6 +423,9 @@ class CatChecker():
 
     See :func:`parseCats` to learn how to write more compact
     descriptors.
+
+    See :func:`.cat_decor.given_divided` to learn how to write even more
+    compact descriptors, combined with data layout.
     """
 
     def __init__(self, cts: dict[str, Any],

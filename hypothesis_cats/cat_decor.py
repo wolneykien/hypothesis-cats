@@ -37,6 +37,12 @@ CATS_DESC_ARG = '_desc_'
 
 def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], out_desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]):
     """
+    A utility function used to pre-process arguments passed to
+    :func:`given_divided`.
+
+    :param in_desc: An input mapping.
+
+    :param out_desc: A dictionary to copy the values to.
     """
     for cls in in_desc:
         cls_val = in_desc[cls]
@@ -54,6 +60,50 @@ def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Map
 
 def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]) -> Callable:
     """
+    A decorator combining @:func:`given` with
+    :func:`.cat_strategies.subdivided`. For each data argument it's
+    possible to define a single strategy value or a to divide it into a
+    number of categories with different strategies and, if necessary,
+    exception expectations. For example:
+
+    .. code-block:: python
+
+       @given_divided(
+           name={
+               'empty': {
+                   'raises': {
+                       'err': TypeError,
+                       'pattern': '^Name'
+                   },
+                   'values': text(max_size=0)
+               },
+               'non-empty': text(min_size=1)
+           },
+           role={
+               'empty': text(max_size=0),
+               'non-empty': text(min_size=1)
+           },
+           age={
+               'non-positive': {
+                   'raises': {
+                       'err': ValueError,
+                       'pattern': '^Age',
+                   },
+                   'values': integers(max_value=0)
+               },
+               'positive': integers(min_value=1)
+           }
+       )
+       def test_user(name, role, age, _layout_, _desc_):
+           with CatChecker(_layout_, _desc_):
+               u = User(name, role, age)
+
+    The supplied description is processed using
+    :func:`.cat_checks.parseCats` and is automatically supplied to the
+    wrapped test function under name ``_desc_``. The current category
+    layout, in turn, is passed as ``_layout_``. If for some reason you
+    do not want that — pass ``False`` under the corresponding name to
+    :func:`given_divided`.
     """
     desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]  = {}
     for d in desc_list:
