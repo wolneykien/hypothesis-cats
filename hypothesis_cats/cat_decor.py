@@ -35,43 +35,63 @@ from .cat_checks import parseCats, CatChecker
 CATS_LAYOUT_ARG = '_layout_'
 CATS_DESC_ARG = '_desc_'
 
-def copy_desc(in_desc: Mapping[str, Mapping[str, Mapping[str, Any]]], out_desc:dict[str, dict[str, Mapping[str, Any]]]):
+def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], out_desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]):
     """
     """
     for cls in in_desc:
-        out_desc[cls] = {}
-        for ctg_name in in_desc[cls]:
-            out_desc[cls][ctg_name] = in_desc[cls][ctg_name]
+        cls_val = in_desc[cls]
+        if isinstance(cls_val, SearchStrategy):
+            out_desc[cls] = cls_val
+        elif isinstance(cls_val, bool):
+            out_desc[cls] = cls_val
+        else:
+            cls_dict = {}
+            for ctg_name in cls_val:
+                cls_dict[ctg_name] = cls_val[ctg_name]
+            out_desc[cls] = cls_dict
 
     return out_desc
 
-def given_divided(*desc_list: Mapping[str, Mapping[str, Mapping[str, Any]]], **desc_dict: Mapping[str, Mapping[str, Any]]) -> Callable:
+def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]) -> Callable:
     """
     """
-    desc: dict[str, dict[str, Mapping[str, Any]]]  = {}
+    desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]  = {}
     for d in desc_list:
         copy_desc(d, desc)
     copy_desc(desc_dict, desc)
 
     data_layout: dict[str, SearchStrategy[Any]] = {}
+    ctg_defs: dict[str, dict[str, Mapping[str, Any]]]  = {}
+
     for cls in desc:
         cls_layout = []
-        for ctg_name in desc[cls]:
-            ctg_desc = desc[cls][ctg_name]
-            if isinstance(ctg_desc, SearchStrategy):
-                ctg_strategy = ctg_desc
-                desc[cls][ctg_name] = {
-                    'name': ctg_name,
-                    'values': ctg_strategy
-                }
-            else:
-                ctg_strategy = ctg_desc['values']
-            cls_layout.append(cat(ctg_name, ctg_strategy))
-        data_layout[cls] = subdivide(cls, *cls_layout)
+        cls_val = desc[cls]
+        if isinstance(cls_val, SearchStrategy):
+            data_layout[cls] = cls_val
+        elif isinstance(cls_val, bool):
+            pass
+        else:
+            ctg_defs[cls] = {}
+            for ctg_name in cls_val:
+                ctg_desc = cls_val[ctg_name]
+                if isinstance(ctg_desc, SearchStrategy):
+                    ctg_strategy = ctg_desc
+                    ctg_defs[cls][ctg_name] = {
+                        'name': ctg_name,
+                        'values': ctg_strategy
+                    }
+                else:
+                    ctg_strategy = ctg_desc['values']
+                    ctg_defs[cls][ctg_name] = ctg_desc
+                cls_layout.append(cat(ctg_name, ctg_strategy))
+            data_layout[cls] = subdivide(cls, *cls_layout)
 
-    ctg_defs = parseCats(desc)
+    if CATS_LAYOUT_ARG not in data_layout:
+        if CATS_LAYOUT_ARG not in desc or desc[CATS_LAYOUT_ARG]:
+            data_layout[CATS_LAYOUT_ARG] = cats()
 
-    data_layout[CATS_LAYOUT_ARG] = cats()
-    data_layout[CATS_DESC_ARG] = cats_desc(ctg_defs)
+    if CATS_DESC_ARG not in data_layout:
+        if CATS_DESC_ARG not in desc or desc[CATS_DESC_ARG]:
+            data_layout[CATS_DESC_ARG] = cats_desc(parseCats(ctg_defs))
 
     return given(**data_layout)
