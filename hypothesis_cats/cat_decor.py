@@ -98,12 +98,11 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
            with CatChecker(_layout_, _desc_):
                u = User(name, role, age)
 
-    The supplied description is processed using
-    :func:`.cat_checks.parseCats` and is automatically supplied to the
-    wrapped test function under name ``_desc_``. The current category
-    layout, in turn, is passed as ``_layout_``. If for some reason you
-    do not want that — pass ``False`` under the corresponding name to
-    :func:`given_divided`.
+    The supplied description is processed and automatically supplied
+    to the wrapped test function under name ``_desc_``. The current
+    category layout, in turn, is passed as ``_layout_``. If for some
+    reason you do not want that — pass ``False`` under the
+    corresponding name to :func:`given_divided`.
     """
     desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]  = {}
     for d in desc_list:
