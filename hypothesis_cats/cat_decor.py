@@ -187,6 +187,26 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
 
 def cat_example(*args: Any, **kwargs: Any) -> Callable[[Callable], Callable]:
     """
+    Allows to specify categorized examples using value-category tuples:
+
+    .. code-block:: python
+
+       @given_divided(...)
+       @cat_example(name=('user', 'non-empty'), role=('', 'empty'),
+                    age=(-1, 'non-positive'))
+       @cat_example(name=('user2', 'non-empty'),
+                    role=('admin', 'non-empty'),
+                    age=(20, 'positive'))
+       def test(...):
+           ...
+
+    This decorator should be used with :func:`given_divided` or it will
+    not work.
+
+    The value-category tuples are required for categorized values, i.e.
+    the values, given subdivided using :func:`given_divided`. On the
+    contrary, the example values for uncategorized classes of values
+    should be specified without additional tuple wrapping.
     """
     if args:
         raise ValueError("Can't use positional arguments in a categorized example.")
