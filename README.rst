@@ -96,30 +96,34 @@ With the present package that could be written as follows:
 
 .. code:: python
 
-   @given(name=subdivide("name",
-               cat({ 'name': "empty",
-                     'raises': {
-                         'err': TypeError,
-                         'pattern': '^Name'
-                     }
-                   }, text(max_size=0)),
-               cat({ 'name': "non-empty" },
-                   text(min_size=1))),
-          role=text(),
-          age=subdivide("age",
-               cat({ 'name': "positive" },
-                   integers(min_value=1)),
-               cat({ 'name': "non-positive",
-                     'raises': {
-                         'err': ValueError,
-                         'pattern': '^Age'
-                     }
-                   }, integers(max_value=0))),
-          cts=cats()
+   from hypothesis_cats import given_divided, with_cat_checker
+
+   @given_divided(
+       name={
+           'empty': {
+               'raises': {
+                   'err': TypeError,
+                   'pattern': '^Name'
+               },
+               'values': text(max_size=0)
+           },
+           'non-empty': text(min_size=1)
+       },
+       role=text(),
+       age={
+           'non-positive': {
+               'raises': {
+                   'err': ValueError,
+                   'pattern': '^Age',
+               },
+               'values': integers(max_value=0)
+           },
+           'positive': integers(min_value=1)
+       }
    )
+   @with_cat_checker
    def test_all_better(name, role, age, cts):
-       with CatChecker(cts):
-           u = User(name, role, age)
+       u = User(name, role, age)
 
 What's good with this function, is that it checks both for good and
 bad parameters together making the individual checks unncecessary,
@@ -134,38 +138,36 @@ bug, but the desired behavior:
 
 .. code:: python
 
-   @given(name=subdivide("name",
-               cat({ 'name': "empty",
-                     'raises': {
-                         'err': TypeError,
-                         'pattern': '^Name'
-                     }
-                   }, text(max_size=0)),
-               cat({ 'name': "non-empty" },
-                   text(min_size=1))),
-          role=subdivide("role",
-               cat({ 'name': "empty" },
-                   text(max_size=0)),
-               cat({ 'name': "non-empty" },
-                   text(min_size=1))),
-          age=subdivide("age",
-               cat({ 'name': "positive" },
-                   integers(min_value=1)),
-               cat({ 'name': "non-positive",
-                     'raises': {
-                         'err': ValueError,
-                         'pattern': '^Age',
-                         'requires': {
-                             'role': "empty"
-                         }
-                     }
-                   }, integers(max_value=0))),
-          cts=cats()
+   @given_divided(
+       name={
+           'empty': {
+               'raises': {
+                   'err': TypeError,
+                   'pattern': '^Name'
+               },
+               'values': text(max_size=0)
+           },
+           'non-empty': text(min_size=1)
+       },
+       role={
+           'empty': text(max_size=0),
+           'non-empty': text(min_size=1)
+       },
+       age={
+           'non-positive': {
+               'raises': {
+                   'err': ValueError,
+                   'pattern': '^Age',
+                    'requires': {
+                        'role': "empty"
+                    }
+               },
+               'values': integers(max_value=0)
+           },
+           'positive': integers(min_value=1)
+       }
    )
-   def test_all_better(name, role, age, cts):
-       with CatChecker(cts):
-           u = User(name, role, age)
 
 Note the new ``'requires':`` declaration for non-positive age category
-referencing the empty category of role strings (that also was
+referencing the "empty" category of role strings (that also was
 subdivided in order to make it possible to reference).
