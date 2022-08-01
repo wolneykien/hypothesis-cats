@@ -19,7 +19,7 @@
 
 from hypothesis import given
 from hypothesis.strategies import integers, text
-from hypothesis_cats import CatChecker, given_divided, cat_example
+from hypothesis_cats import CatChecker, given_divided, cat_example, with_cat_checker
 # import pytest
 
 class User():
@@ -100,9 +100,9 @@ class User():
              age=(-1, 'non-positive'))
 @cat_example(name=('user2', 'non-empty'), role=('admin', 'non-empty'),
              age=(20, 'positive'))
-def test_all_better(name, role, age, _layout_, _desc_):
-    with CatChecker(_layout_, _desc_):
-        u = User(name, role, age)
+@with_cat_checker
+def test_all_better(name, role, age):
+    u = User(name, role, age)
 
 if __name__ == "__main__":
 #    test_name_empty()

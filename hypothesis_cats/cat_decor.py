@@ -221,3 +221,34 @@ def cat_example(*args: Any, **kwargs: Any) -> Callable[[Callable], Callable]:
         return func
 
     return decorator
+
+def with_cat_checker(func: Callable) -> Callable:
+    """
+    Wraps the given test function in :class:`.cat_checks.CatChecker`
+    context using ``with CatChecker(_layout_, _desc_):``.
+
+    :param func: A test functions to wrap.
+
+    :return: The wrapped test function.
+    """
+
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        test_kwargs = { **kwargs }
+
+        _layout_ = None
+        if CATS_LAYOUT_ARG in test_kwargs:
+            _layout_ = test_kwargs[CATS_LAYOUT_ARG]
+            del test_kwargs[CATS_LAYOUT_ARG]
+
+        if not _layout_:
+            raise ValueError(f'Expected the category layout to be passed under "{CATS_LAYOUT_ARG}" name')
+
+        _desc_ = None
+        if CATS_DESC_ARG in test_kwargs:
+            _desc_ = test_kwargs[CATS_DESC_ARG]
+            del test_kwargs[CATS_DESC_ARG]
+
+        with CatChecker(_layout_, _desc_):
+            return func(*args, **test_kwargs)
+
+    return wrapper
