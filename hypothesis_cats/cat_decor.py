@@ -24,7 +24,7 @@ strategy. This module defines decorator functions that help to supply
 categorized data to test functions in form of strategies and examples.
 """
 
-from typing import Union, Any, Callable, Mapping
+from typing import Union, Any, Callable, Mapping, Sequence
 
 from hypothesis import given, example
 from hypothesis.strategies import SearchStrategy
@@ -34,6 +34,7 @@ from .cat_checks import parseCats, CatChecker
 
 CATS_LAYOUT_ARG = '_layout_'
 CATS_DESC_ARG = '_desc_'
+CATS_EXAMPLE_ATTR = '_hypothesis_cats_example'
 
 def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], out_desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]):
     """
@@ -58,7 +59,7 @@ def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Map
 
     return out_desc
 
-def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]) -> Callable:
+def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]) -> Callable[[Callable], Callable]:
     """
     A decorator combining @:func:`given` with
     :func:`.cat_strategies.subdivided`. For each data argument it's
@@ -135,12 +136,66 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
                 cls_layout.append(cat(ctg_name, ctg_strategy))
             data_layout[cls] = subdivide(cls, *cls_layout)
 
+    layout_arg = False
     if CATS_LAYOUT_ARG not in data_layout:
         if CATS_LAYOUT_ARG not in desc or desc[CATS_LAYOUT_ARG]:
             data_layout[CATS_LAYOUT_ARG] = cats()
+            layout_arg = True
 
+    desc_arg = False
+    parsed_defs = parseCats(ctg_defs)
     if CATS_DESC_ARG not in data_layout:
         if CATS_DESC_ARG not in desc or desc[CATS_DESC_ARG]:
-            data_layout[CATS_DESC_ARG] = cats_desc(parseCats(ctg_defs))
+            data_layout[CATS_DESC_ARG] = cats_desc(parsed_defs)
+            desc_arg = True
 
-    return given(**data_layout)
+    def decorator(func: Callable) -> Callable:
+        if hasattr(func, CATS_EXAMPLE_ATTR):
+            exmps: Sequence[Mapping[str, Any]] = \
+                getattr(func, CATS_EXAMPLE_ATTR)
+            for exmp in exmps:
+                exmp_layout = {}
+                exmp_values = {}
+                for cls in exmp:
+                    if cls in ctg_defs:
+                        val = exmp[cls]
+                        ctg = ctg_defs[cls]
+                        if not isinstance(val, tuple):
+                            raise ValueError(f'According to the category descriptor, "{cls}" is a subdivided value. Please, specify an explicit category name using a (<value>, <category name>) tuple.')
+                        if len(val) != 2:
+                            raise ValueError(f'The tuple for "{cls}" is not a valid value-catrgory tuple.')
+                        if val[1] not in ctg:
+                            raise ValueError(f'The specified category "{val[1]} is not defined for value "{cls}".')
+                        exmp_values[cls] = val[0]
+                        exmp_layout[cls] = val[1]
+
+                exmp_args = { **exmp_values }
+                if layout_arg:
+                    exmp_args = { **exmp_args,
+                                  CATS_LAYOUT_ARG: exmp_layout }
+                if desc_arg:
+                    exmp_args = { **exmp_args,
+                                  CATS_DESC_ARG: parsed_defs }
+
+                func = example(**exmp_args)(func)
+
+        return given(**data_layout)(func)
+
+    return decorator
+
+def cat_example(*args: Any, **kwargs: Any) -> Callable[[Callable], Callable]:
+    """
+    """
+    if args:
+        raise ValueError("Can't use positional arguments in a categorized example.")
+
+    def decorator(func: Callable) -> Callable:
+        if hasattr(func, CATS_EXAMPLE_ATTR):
+            setattr(func, CATS_EXAMPLE_ATTR,
+                    getattr(func, CATS_EXAMPLE_ATTR) + [kwargs])
+        else:
+            setattr(func, CATS_EXAMPLE_ATTR, [kwargs])
+
+        return func
+
+    return decorator
