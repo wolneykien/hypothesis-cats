@@ -36,7 +36,7 @@ CATS_LAYOUT_ARG = '_layout_'
 CATS_DESC_ARG = '_desc_'
 CATS_EXAMPLE_ATTR = '_hypothesis_cats_example'
 
-def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], out_desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]):
+def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]], out_desc: dict[str, Union[SearchStrategy, bool, dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]):
     """
     A utility function used to pre-process arguments passed to
     :func:`given_divided`.
@@ -59,7 +59,7 @@ def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Map
 
     return out_desc
 
-def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Mapping[str, Any]]]) -> Callable[[Callable], Callable]:
+def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]) -> Callable[[Callable], Callable]:
     """
     A decorator combining @:func:`given` with
     :func:`.cat_strategies.subdivided`. For each data argument it's
@@ -105,7 +105,7 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
     reason you do not want that — pass ``False`` under the
     corresponding name to :func:`given_divided`.
     """
-    desc: dict[str, Union[SearchStrategy, bool, dict[str, Mapping[str, Any]]]]  = {}
+    desc: dict[str, Union[SearchStrategy, bool, dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]  = {}
     for d in desc_list:
         copy_desc(d, desc)
     copy_desc(desc_dict, desc)
