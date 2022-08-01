@@ -157,8 +157,8 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
                 exmp_layout = {}
                 exmp_values = {}
                 for cls in exmp:
+                    val = exmp[cls]
                     if cls in ctg_defs:
-                        val = exmp[cls]
                         ctg = ctg_defs[cls]
                         if not isinstance(val, tuple):
                             raise ValueError(f'According to the category descriptor, "{cls}" is a subdivided value. Please, specify an explicit category name using a (<value>, <category name>) tuple.')
@@ -168,6 +168,8 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
                             raise ValueError(f'The specified category "{val[1]} is not defined for value "{cls}".')
                         exmp_values[cls] = val[0]
                         exmp_layout[cls] = val[1]
+                    else:
+                        exmp_values[cls] = val
 
                 exmp_args = { **exmp_values }
                 if layout_arg:
