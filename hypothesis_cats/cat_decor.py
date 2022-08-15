@@ -24,7 +24,8 @@ strategy. This module defines decorator functions that help to supply
 categorized data to test functions in form of strategies and examples.
 """
 
-from typing import Union, Any, Callable, Mapping, Sequence, Dict
+from typing import Union, Any, Callable, Mapping, Sequence, Dict, \
+    Optional
 
 from hypothesis import given, example
 from hypothesis.strategies import SearchStrategy
@@ -223,33 +224,41 @@ def cat_example(*args: Any, **kwargs: Any) -> Callable[[Callable], Callable]:
 
     return decorator
 
-def with_cat_checker(func: Callable) -> Callable:
+def with_cat_checker(as_name: Optional[str] = None) -> Callable[[Callable], Callable]:
     """
     Wraps the given test function in :class:`.cat_checks.CatChecker`
     context using ``with CatChecker(_layout_, _desc_):``.
 
-    :param func: A test functions to wrap.
+    :param as_name: An optional name under which the instantiated
+        :class:`.cat_checks.CatChecker` should be passed to the
+        wrapped function.
 
-    :return: The wrapped test function.
+    :return: The decorator for the test function that wraps it
+        with the category checker context.
     """
 
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        test_kwargs = { **kwargs }
+    def decor(func: Callable) -> Callable:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            test_kwargs = { **kwargs }
 
-        _layout_ = None
-        if CATS_LAYOUT_ARG in test_kwargs:
-            _layout_ = test_kwargs[CATS_LAYOUT_ARG]
-            del test_kwargs[CATS_LAYOUT_ARG]
+            _layout_ = None
+            if CATS_LAYOUT_ARG in test_kwargs:
+                _layout_ = test_kwargs[CATS_LAYOUT_ARG]
+                del test_kwargs[CATS_LAYOUT_ARG]
 
-        if not _layout_:
-            raise ValueError(f'Expected the category layout to be passed under "{CATS_LAYOUT_ARG}" name')
+            if not _layout_:
+                raise ValueError(f'Expected the category layout to be passed under "{CATS_LAYOUT_ARG}" name')
 
-        _desc_ = None
-        if CATS_DESC_ARG in test_kwargs:
-            _desc_ = test_kwargs[CATS_DESC_ARG]
-            del test_kwargs[CATS_DESC_ARG]
+            _desc_ = None
+            if CATS_DESC_ARG in test_kwargs:
+                _desc_ = test_kwargs[CATS_DESC_ARG]
+                del test_kwargs[CATS_DESC_ARG]
 
-        with CatChecker(_layout_, _desc_):
-            return func(*args, **test_kwargs)
+            with CatChecker(_layout_, _desc_) as ck:
+                if as_name:
+                    test_kwargs[as_name] = ck
+                return func(*args, **test_kwargs)
 
-    return wrapper
+        return wrapper
+
+    return decor

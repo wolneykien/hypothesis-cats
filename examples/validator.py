@@ -100,7 +100,7 @@ class User():
              age=(-1, 'non-positive'))
 @cat_example(name=('user2', 'non-empty'), role=('admin', 'non-empty'),
              age=(20, 'positive'))
-@with_cat_checker
+@with_cat_checker()
 def test_all_better(name, role, age):
     u = User(name, role, age)
 

@@ -121,7 +121,7 @@ With the present package that could be written as follows:
            'positive': integers(min_value=1)
        }
    )
-   @with_cat_checker
+   @with_cat_checker()
    def test_all_better(name, role, age, cts):
        u = User(name, role, age)
 
