@@ -31,7 +31,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 # Typing
-from typing import Union, Sequence, Any, Callable, TypeVar, Optional
+from typing import Union, Sequence, Any, Callable, TypeVar, \
+    Optional, Mapping
 
 T = TypeVar('T')
 
@@ -92,7 +93,7 @@ def cat(draw: DrawFn, cat_desc: Any, base_st: st.SearchStrategy[T]) -> tuple[T, 
     return draw(st.tuples(base_st, __just__(cat_desc)))
 
 @st.composite
-def cats(draw: DrawFn) -> dict[str, Any]:
+def cats(draw: DrawFn) -> Mapping[str, Any]:
     """
     Within the given test run always returns the shared dictionary
     object where resulting category layout is exposed.
@@ -193,7 +194,7 @@ def subdivide(draw: DrawFn, class_name: str, *onto: st.SearchStrategy[tuple[T, A
     return draw(classify(class_name, st.one_of(*onto)))
 
 @st.composite
-def cats_desc(draw: DrawFn, desc: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def cats_desc(draw: DrawFn, desc: Optional[Mapping[str, Any]] = None) -> Mapping[str, Any]:
     """
     Within the given test run always returns the shared dictionary
     object for category descriptors.

@@ -24,7 +24,7 @@ strategy. This module defines decorator functions that help to supply
 categorized data to test functions in form of strategies and examples.
 """
 
-from typing import Union, Any, Callable, Mapping, Sequence
+from typing import Union, Any, Callable, Mapping, Sequence, Dict
 
 from hypothesis import given, example
 from hypothesis.strategies import SearchStrategy
@@ -36,7 +36,7 @@ CATS_LAYOUT_ARG = '_layout_'
 CATS_DESC_ARG = '_desc_'
 CATS_EXAMPLE_ATTR = '_hypothesis_cats_example'
 
-def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]], out_desc: dict[str, Union[SearchStrategy, bool, dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]):
+def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]], out_desc: Dict[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]):
     """
     A utility function used to pre-process arguments passed to
     :func:`given_divided`.
@@ -105,13 +105,13 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
     reason you do not want that — pass ``False`` under the
     corresponding name to :func:`given_divided`.
     """
-    desc: dict[str, Union[SearchStrategy, bool, dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]  = {}
+    desc: Dict[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]  = {}
     for d in desc_list:
         copy_desc(d, desc)
     copy_desc(desc_dict, desc)
 
-    data_layout: dict[str, SearchStrategy[Any]] = {}
-    ctg_defs: dict[str, dict[str, Mapping[str, Any]]]  = {}
+    data_layout: Dict[str, SearchStrategy[Any]] = {}
+    ctg_defs: Dict[str, Dict[str, Mapping[str, Any]]]  = {}
 
     for cls in desc:
         cls_layout = []

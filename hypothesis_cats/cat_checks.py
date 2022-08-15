@@ -25,8 +25,7 @@ based on categories of the given set of values.
 """
 
 from typing import Any, Optional, Union, Sequence, TypedDict, \
-    Callable, List, Pattern, Mapping
-from collections.abc import Iterable
+    Callable, List, Pattern, Mapping, Type, Dict
 import re
 
 from .cat_desc import Cat
@@ -37,9 +36,9 @@ class GuardedRaisesDict(TypedDict):
     A helper class defining the dictionary layout for parsing
     ``'raises': { ... }`` dictionaries in the category declarations.
     """
-    err: type[Exception]
+    err: Type[Exception]
     pattern: Union[str, Pattern]
-    requires: dict[str, str]
+    requires: Mapping[str, str]
 
 def tryGetCatName(ctg: Any) -> str:
     """
@@ -76,9 +75,9 @@ class GuardedRaises():
     """
 
     def __init__(self,
-                 err: Union[None, type[Exception]] = None,
+                 err: Union[None, Type[Exception]] = None,
                  pattern: Union[None, str, Pattern] = None,
-                 requires: Union[None, dict[str, str]] = None):
+                 requires: Union[None, Mapping[str, str]] = None):
         """
         :param err: An :class:`Exception` type that is expected to be
             raised by the code under test if the value of the
@@ -105,7 +104,7 @@ class GuardedRaises():
             self.pattern = re.compile(pattern)
         self.requires = requires
 
-    def isExpected(self, ex: Exception, cts: dict[str, Any]) -> bool:
+    def isExpected(self, ex: Exception, cts: Mapping[str, Any]) -> bool:
         """
         Checks if the given exception is expected under conditions,
         determined by the supplied class-category layout.
@@ -128,7 +127,7 @@ class GuardedRaises():
                     return self.checkReqs(cts)
         return False
 
-    def checkReqs(self, cts: dict[str, Any]) -> bool:
+    def checkReqs(self, cts: Mapping[str, Any]) -> bool:
         """
         Checks that all requirements, if any, are met by the supplied
         class-category layout.
@@ -179,11 +178,11 @@ class ExCat(Cat):
                  comment: Optional[str] = None,
                  raises: Union[
                      None,
-                     type[Exception], GuardedRaises,
+                     Type[Exception], GuardedRaises,
                      GuardedRaisesDict,
                      Sequence[
                          Union[
-                             type[Exception], GuardedRaises,
+                             Type[Exception], GuardedRaises,
                              GuardedRaisesDict
                          ]
                      ]
@@ -216,7 +215,7 @@ class ExCat(Cat):
 
     def appendRaises(self,
                      raises: Union[
-                         type[Exception], GuardedRaises,
+                         Type[Exception], GuardedRaises,
                          GuardedRaisesDict
                      ]):
         """
@@ -243,7 +242,7 @@ class ExCat(Cat):
         else:
             raise TypeError('appendRaises(r) expects an exception type or a GuardedRaises object optionallly represented by a plain dictionary.')
 
-    def isExpected(self, ex: Exception, cts: dict[str, Any]) -> bool:
+    def isExpected(self, ex: Exception, cts: Mapping[str, Any]) -> bool:
         """
         Checks if the given exception is expected under conditions,
         determined by the supplied class-category layout.
@@ -267,7 +266,7 @@ class ExCat(Cat):
 
         return False
 
-    def expectedRaises(self, cts: dict[str, Any]) -> List[GuardedRaises]:
+    def expectedRaises(self, cts: Mapping[str, Any]) -> List[GuardedRaises]:
         """
         Returns the list of all exception expectation whose
         requirements are met by the supplied category layout.
@@ -428,8 +427,8 @@ class CatChecker():
     compact descriptors, combined with data layout.
     """
 
-    def __init__(self, cts: dict[str, Any],
-                 ctg_defs: Optional[dict[str, dict[str, Union[Cat, ExCat, dict[str, Any]]]]] = None):
+    def __init__(self, cts: Mapping[str, Any],
+                 ctg_defs: Optional[Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]] = None):
         """
         :param cts: The category layout normally exposed by the
             :func:`.cat_strategies.classify` and
@@ -472,7 +471,7 @@ class CatChecker():
         """
         return self
 
-    def __exit__(self, exc_type: type[Exception],
+    def __exit__(self, exc_type: Type[Exception],
                  exc_value: Exception, traceback) -> bool:
         """
         The exit point of the context manager. Controls, whether the
@@ -512,7 +511,7 @@ class CatChecker():
                             ctg_defs=self.ctg_defs[cls])
         return None
 
-    def expectedRaises(self) -> dict[str, List[GuardedRaises]]:
+    def expectedRaises(self) -> Mapping[str, List[GuardedRaises]]:
         """
         Returns the dictionary representing all exceptions,
         expected under the current category layout (i.e. the
@@ -523,7 +522,7 @@ class CatChecker():
         :return: The dictionary representing all currently expected
             exceptions as described above.
         """
-        expected: dict[str, List[GuardedRaises]] = {}
+        expected: Dict[str, List[GuardedRaises]] = {}
         for cls in self.cts:
             exctg = self.tryGetCat(cls)
             if exctg:
@@ -577,7 +576,7 @@ def parseCats(desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[s
         a name inside a category descriptor doesn't match the
         key under which thay category is defined.
     """
-    ret: dict[str, dict[str, ExCat]] = {}
+    ret: Dict[str, Dict[str, ExCat]] = {}
     for cls in desc_layout:
         ret[cls] = {}
         for ctgname in desc_layout[cls]:
