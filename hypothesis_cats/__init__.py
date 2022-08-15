@@ -17,7 +17,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-from .cat_strategies import cat, cats, getcat, classify, subdivide
+from .cat_strategies import cat, cats, getcat, classify, subdivide, \
+    nonequal
 from .cat_checks import ExCat, CatChecker, parseCats
 from .cat_decor import given_divided, cat_example, with_cat_checker
 

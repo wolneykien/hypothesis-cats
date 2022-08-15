@@ -212,3 +212,19 @@ def cats_desc(draw: DrawFn, desc: Optional[dict[str, Any]] = None) -> dict[str, 
     if desc:
         shared_desc.update(desc)
     return shared_desc
+
+def nonequal(src: st.SearchStrategy[T]) -> Callable[[Any], st.SearchStrategy[T]]:
+    """
+    Returns a function to be used with
+    :func:`st.SearchStrategy.flatmap` that filters out values of the
+    given strategy that are equal to values produced by the base
+    strategy.
+
+    :param src: A strategy to draw values from.
+
+    :return: A function that filters out values that are
+        equal to values of the base, i.e. mapped, strategy.
+    """
+    return lambda v0: src.filter(
+        lambda v: v != v0
+    )
