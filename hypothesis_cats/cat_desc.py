@@ -59,6 +59,15 @@ class Cat():
 
     def __repr__(self) -> str:
         """
+        Returns the string representation of a category: its
+        name is angle brackets.
+
+        :return: Name of the category in angle brackets.
+        """
+        return '<%s>' % self.name
+
+    def __str__(self) -> str:
+        """
         The default string representation of a category ommits
         the comment.
 
