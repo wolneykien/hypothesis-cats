@@ -450,6 +450,41 @@ class CatLayout(dict):
         """
         return self.countTag(tag) > 0
 
+class ParsedCats(dict):
+    """
+    Extends the plain ``dict`` class to be sure it contains parsed
+    category definitions.
+    """
+    def __init__(self, desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]):
+        """
+        :param desc_layout: A value-class -> catecory-descriptor
+            dictionary as described above.
+        """
+        if isinstance(desc_layout, ParsedCats):
+            super().__init__(desc_layout)
+        else:
+            ret: Dict[str, Dict[str, ExCat]] = {}
+            for cls in desc_layout:
+                ret[cls] = {}
+                for ctgname in desc_layout[cls]:
+                    exctg = None
+                    ctg = desc_layout[cls][ctgname]
+                    if isinstance(ctg, ExCat):
+                        exctg = ctg
+                    elif isinstance(ctg, Cat):
+                        exctg = ExCat(ctg.name, ctg.comment)
+                    else:
+                        if 'name' in ctg:
+                            exctg = ExCat.from_dict(ctg)
+                        else:
+                            exctg = ExCat.from_dict({ 'name': ctgname, **ctg })
+
+                    if exctg.name != ctgname:
+                        raise ValueError('A descriptor with name "%s" is specified under key "%s".')
+
+                    ret[cls][ctgname] = exctg
+            super().__init__(ret)
+
 class CatChecker():
     """
     A `context manager <https://docs.python.org/3/library/stdtypes.html#typecontextmanager>`_
@@ -516,7 +551,7 @@ class CatChecker():
     """
 
     def __init__(self, cts: Mapping[str, Any],
-                 ctg_defs: Optional[Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]] = None):
+                 ctg_defs: Optional[Union[ParsedCats, Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]]] = None):
         """
         :param cts: The category layout normally exposed by the
             :func:`.cat_strategies.classify` and
@@ -544,9 +579,12 @@ class CatChecker():
         """
         self.cts = CatLayout(cts)
         if ctg_defs:
-            self.ctg_defs = parseCats(ctg_defs)
+            if isinstance(ctg_defs, ParsedCats):
+                self.ctg_defs = ctg_defs
+            else:
+                self.ctg_defs = parseCats(ctg_defs)
         else:
-            self.ctg_defs = {}
+            self.ctg_defs = parseCats({})
 
     def __enter__(self) -> 'CatChecker':
         """
@@ -644,7 +682,7 @@ class CatChecker():
         """
         return self.cts.hasTag(tag)
 
-def parseCats(desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]) -> Mapping[str, Mapping[str, ExCat]]:
+def parseCats(desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]) -> ParsedCats:
     """
     Parses the given value-class -> catecory-descriptor dictionary.
     The descriptors for named classes of values might be represented
@@ -688,25 +726,7 @@ def parseCats(desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[s
         a name inside a category descriptor doesn't match the
         key under which thay category is defined.
     """
-    ret: Dict[str, Dict[str, ExCat]] = {}
-    for cls in desc_layout:
-        ret[cls] = {}
-        for ctgname in desc_layout[cls]:
-            exctg = None
-            ctg = desc_layout[cls][ctgname]
-            if isinstance(ctg, ExCat):
-                exctg = ctg
-            elif isinstance(ctg, Cat):
-                exctg = ExCat(ctg.name, ctg.comment)
-            else:
-                if 'name' in ctg:
-                    exctg = ExCat.from_dict(ctg)
-                else:
-                    exctg = ExCat.from_dict({ 'name': ctgname, **ctg })
-
-            if exctg.name != ctgname:
-                raise ValueError('A descriptor with name "%s" is specified under key "%s".')
-
-            ret[cls][ctgname] = exctg
-
-    return ret
+    if isinstance(desc_layout, ParsedCats):
+        return desc_layout
+    else:
+        return ParsedCats(desc_layout)
