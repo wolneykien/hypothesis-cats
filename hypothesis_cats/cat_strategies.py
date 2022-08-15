@@ -93,20 +93,27 @@ def cat(draw: DrawFn, cat_desc: Any, base_st: st.SearchStrategy[T]) -> tuple[T, 
     return draw(st.tuples(base_st, __just__(cat_desc)))
 
 @st.composite
-def cats(draw: DrawFn) -> Mapping[str, Any]:
+def cats(draw: DrawFn, dictObj: Optional[Mapping] = None) -> Mapping[str, Any]:
     """
     Within the given test run always returns the shared dictionary
     object where resulting category layout is exposed.
 
     :param draw: A special function supplied by Hypothesis.
 
+    :param dictObj: An optional base dictionary object to be used
+        to represent the layout. By default, plain ``{}`` is
+        instantiated.
+
     :return: The set of categories that consist the given
         example data in the form of class-category dictionary.
     """
-    return draw(st.shared(__just__({}), key=CATS_LAYOUT_KEY))
+    if dictObj is None:
+        dictObj = {}
+    return draw(st.shared(__just__(dictObj), key=CATS_LAYOUT_KEY))
 
 @st.composite
-def getcat(draw: DrawFn, class_name: str) -> Any:
+def getcat(draw: DrawFn, class_name: str,
+           dictObj: Optional[Mapping] = None) -> Any:
     """
     Extracts the named category descriptor or marker from the shared
     dictionary where the resulting category layout is exposed.
@@ -116,14 +123,20 @@ def getcat(draw: DrawFn, class_name: str) -> Any:
     :param class_name: An arbitrary name used to distinguish a class
         of values subdivided into a number of categories.
 
+    :param dictObj: An optional base dictionary object to be passed
+        to :func:`cats`.
+
     :return The category descriptor or the category marker of the
         given class of values within the current category layout of
         the example data.
     """
-    return draw(cats())[class_name]
+    return draw(cats(dictObj=dictObj))[class_name]
 
 @st.composite
-def classify(draw: DrawFn, class_name: str, base_st: st.SearchStrategy[tuple[T, Any]]) -> T:
+def classify(draw: DrawFn,
+             class_name: str,
+             base_st: st.SearchStrategy[tuple[T, Any]],
+             dictObj: Optional[Mapping] = None) -> T:
     """
     Extracts the original values from value-category tuples produced
     by the :func:`cat` strategy while exposing the corresponding
@@ -136,6 +149,9 @@ def classify(draw: DrawFn, class_name: str, base_st: st.SearchStrategy[tuple[T, 
         of values subdivided into a number of categories.
 
     :param base_st: The base strategy producing value-category tuples.
+
+    :param dictObj: An optional base dictionary object to be passed
+        to :func:`cats`.
 
     :return: The original values extracted from value-category tuples.
 
@@ -168,13 +184,16 @@ def classify(draw: DrawFn, class_name: str, base_st: st.SearchStrategy[tuple[T, 
     write the set of test functions for a more complex functionality.
     See :class:`.cat_checks.CatChecker` for an example.
     """
-    cts = draw(cats())
+    cts = draw(cats(dictObj=dictObj))
     catval = draw(base_st)
     cts[class_name] = catval[1]
     return catval[0]
 
 @st.composite
-def subdivide(draw: DrawFn, class_name: str, *onto: st.SearchStrategy[tuple[T, Any]]) -> T:
+def subdivide(draw: DrawFn,
+              class_name: str,
+              *onto: st.SearchStrategy[tuple[T, Any]],
+              dictObj: Optional[Mapping] = None) -> T:
     """
     Implements the behavior of :func:`classify` + :func:`st.one_of.`
     I.e., instead of writing
@@ -189,9 +208,13 @@ def subdivide(draw: DrawFn, class_name: str, *onto: st.SearchStrategy[tuple[T, A
     :param onto: A number of :func:`cat` strategies producing
         value-category tuples.
 
+    :param dictObj: An optional base dictionary object to be passed
+        to :func:`cats`.
+
     :return: The original values extracted from value-category tuples.
     """
-    return draw(classify(class_name, st.one_of(*onto)))
+    return draw(classify(class_name, st.one_of(*onto),
+                         dictObj=dictObj))
 
 @st.composite
 def cats_desc(draw: DrawFn, desc: Optional[Mapping[str, Any]] = None) -> Mapping[str, Any]:

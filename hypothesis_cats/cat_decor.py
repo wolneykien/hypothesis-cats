@@ -30,7 +30,7 @@ from hypothesis import given, example
 from hypothesis.strategies import SearchStrategy
 
 from .cat_strategies import cat, cats, cats_desc, subdivide
-from .cat_checks import parseCats, CatChecker, ExCat
+from .cat_checks import parseCats, CatChecker, ExCat, CatLayout
 
 CATS_LAYOUT_ARG = '_layout_'
 CATS_DESC_ARG = '_desc_'
@@ -135,12 +135,12 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
                     ctg_obj = ExCat.from_dict({ 'name': ctg_name, **ctg_desc })
                 ctg_defs[cls][ctg_name] = ctg_obj
                 cls_layout.append(cat(ctg_obj, ctg_strategy))
-            data_layout[cls] = subdivide(cls, *cls_layout)
+            data_layout[cls] = subdivide(cls, *cls_layout, dictObj=CatLayout())
 
     layout_arg = False
     if CATS_LAYOUT_ARG not in data_layout:
         if CATS_LAYOUT_ARG not in desc or desc[CATS_LAYOUT_ARG]:
-            data_layout[CATS_LAYOUT_ARG] = cats()
+            data_layout[CATS_LAYOUT_ARG] = cats(dictObj=CatLayout())
             layout_arg = True
 
     desc_arg = False
@@ -155,7 +155,7 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
             exmps: Sequence[Mapping[str, Any]] = \
                 getattr(func, CATS_EXAMPLE_ATTR)
             for exmp in exmps:
-                exmp_layout = {}
+                exmp_layout = CatLayout()
                 exmp_values = {}
                 for cls in exmp:
                     val = exmp[cls]

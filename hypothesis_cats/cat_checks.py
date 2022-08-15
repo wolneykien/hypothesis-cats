@@ -413,6 +413,43 @@ def tryExCat(ctg: Any, ctg_defs: Optional[Mapping[str, ExCat]] = None) -> Option
 
     return None
 
+class CatLayout(dict):
+    """
+    Extends the plain ``dict`` class with handy methods to query
+    for categories and tags.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def countTag(self, tag: str) -> int:
+        """
+        Counts number of times the given tag is defined in this
+        category layout.
+
+        :param tag: The name of the tag to count.
+
+        :return: Number of times the given tag is defined in this
+            category layout.
+        """
+        count = 0
+        for c in self.values():
+            if tag in tryGetTagNames(c):
+                count += 1
+
+        return count
+
+    def hasTag(self, tag: str) -> bool:
+        """
+        Checks if the given tag is defined at least once in this
+        category layout.
+
+        :param tag: The name of the tag to count.
+
+        :return: ``True`` if the given tag is defined at least once
+        in this category layout, ``False`` otherwise.
+        """
+        return self.countTag(tag) > 0
+
 class CatChecker():
     """
     A `context manager <https://docs.python.org/3/library/stdtypes.html#typecontextmanager>`_
@@ -505,7 +542,7 @@ class CatChecker():
         :raises ValueError: Raises :class:`ValueError` for the same
             cases as :func:`parseCats`.
         """
-        self.cts = cts
+        self.cts = CatLayout(cts)
         if ctg_defs:
             self.ctg_defs = parseCats(ctg_defs)
         else:
@@ -582,6 +619,30 @@ class CatChecker():
                     expected[cls] = exlist
 
         return expected
+
+    def countTag(self, tag: str) -> int:
+        """
+        Counts number of times the given tag is defined in the
+        current category layout.
+
+        :param tag: The name of the tag to count.
+
+        :return: Number of times the given tag is defined in the
+            current category layout.
+        """
+        return self.cts.countTag(tag)
+
+    def hasTag(self, tag: str) -> bool:
+        """
+        Checks if the given tag is defined at least once in the
+        current category layout.
+
+        :param tag: The name of the tag to count.
+
+        :return: ``True`` if the given tag is defined at least once
+        in the current category layout, ``False`` otherwise.
+        """
+        return self.cts.hasTag(tag)
 
 def parseCats(desc_layout: Mapping[str, Mapping[str, Union[Cat, ExCat, Mapping[str, Any]]]]) -> Mapping[str, Mapping[str, ExCat]]:
     """
