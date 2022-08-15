@@ -24,7 +24,7 @@ strategy. This module defines utility classes for category
 descriptors.
 """
 
-from typing import Optional, Mapping, Any
+from typing import Optional, Mapping, Any, Union, Sequence
 
 class Cat():
     """
@@ -33,11 +33,14 @@ class Cat():
     """
 
     def __init__(self, name: str = None,
-                 comment: Optional[str] = None):
+                 comment: Optional[str] = None,
+                 tags: Optional[Union[str, Sequence[str]]] = None):
         """
         :param name: The name of the category.
 
         :param comment: The comment or a description for it.
+
+        :param tags: The set of tags assigned to this category.
 
         :raises ValueError: If name is empty.
         """
@@ -45,6 +48,14 @@ class Cat():
             raise ValueError('Category name should not be empty!')
         self.name = name
         self.comment = comment
+
+        if tags:
+            if isinstance(tags, str):
+                self.tags = [ tags ]
+            else:
+                self.tags = [ *tags ]
+        else:
+            self.tags = []
 
     def __repr__(self) -> str:
         """
@@ -60,15 +71,15 @@ class Cat():
         """
         Tries to create the :class:`Cat` from a dictionary.
         The dictionary has to define a value under the ``'name'`` key.
-        The optional ``'comment'`` value, if such key is present, is
-        also used. The other values in the dictionary are silently
-        ignored.
+        The optional ``'comment'`` and ``'tags'`` values, if such
+        keys are present, are also used. All other values in the
+        dictionary are silently ignored.
 
         :param d: A dictionary with at least ``'name'`` and,
-            optionally, ``'comment'`` keys.
+            optionally, ``'comment'`` and ``'tags'`` keys.
 
-        :return: The fresh :class:`Cat:` instance with name and comment
-            taken from the dictionary.
+        :return: The fresh :class:`Cat:` instance with name and
+            comment taken from the dictionary.
 
         :raises KeyError: If there is no ``'name'`` key in the
             supplied dictionary.
@@ -79,4 +90,6 @@ class Cat():
         _d['name'] = d['name']
         if 'comment' in d:
             _d['comment'] = d['comment']
+        if 'tags' in d:
+            _d['tags'] = d['tags']
         return cls(**_d)

@@ -39,11 +39,12 @@ class GuardedRaisesDict(TypedDict):
     err: Type[Exception]
     pattern: Union[str, Pattern]
     requires: Mapping[str, str]
+    require_tags: Union[None, str, Sequence[str]]
 
 def tryGetCatName(ctg: Any) -> str:
     """
     Tryies to return the name of the given category. If ``ctg`` is a
-    a :class:`.cat_desc.Cat` value, the functions returns ``ctg.name``.
+    :class:`.cat_desc.Cat` value, the functions returns ``ctg.name``.
     Otherwise, if the given object is a dictionary, it tries to access
     its ``name`` key. Otherwise, a string representation of the whole
     object as ``str(ctg)`` is returned.
@@ -68,6 +69,32 @@ def tryGetCatName(ctg: Any) -> str:
     else:
         return str(ctg)
 
+def tryGetTagNames(ctg: Any) -> Sequence[str]:
+    """
+    Tryies to return tags assigned to the given category.
+    If ``ctg`` is a class:`.cat_desc.Cat` value, the functions
+    returns ``ctg.tags``. Otherwise, if the given object is a
+    dictionary, it tries to access its ``tags`` key.
+    Otherwise, the empty list is returned.
+
+    :param ctg: A category name or a descriptor.
+
+    :return: Category tags as described above.
+
+    :raises KeyError: If there is no ``'tags'`` key in the
+        supplied dictionary.
+    """
+    ctgobj: Optional[Cat] = None
+    if isinstance(ctg, Cat):
+        ctgobj = ctg
+    elif isinstance(ctg, dict):
+        ctgobj = Cat.from_dict(ctg)
+
+    if ctgobj:
+        return ctgobj.tags
+    else:
+        return []
+
 class GuardedRaises():
     """
     A class representing an :class:`Exception` exceptation, declared by
@@ -77,7 +104,8 @@ class GuardedRaises():
     def __init__(self,
                  err: Union[None, Type[Exception]] = None,
                  pattern: Union[None, str, Pattern] = None,
-                 requires: Union[None, Mapping[str, str]] = None):
+                 requires: Union[None, Mapping[str, str]] = None,
+                 require_tags: Union[None, str, Sequence[str]] = None):
         """
         :param err: An :class:`Exception` type that is expected to be
             raised by the code under test if the value of the
@@ -93,7 +121,11 @@ class GuardedRaises():
         :param requires: A string-string dictionary declaring
             category names of values of other classes. The declared
             exception is only expected if the requirements are empty
-            or are met.
+            or are met, including tag requirements.
+
+        :param require_tags: Additional requirements for tags.
+            If not empty, the declared exception is not expected
+            unless all required tags are present.
 
         :raises ValueError: If no exception type was supplied.
         """
@@ -102,7 +134,19 @@ class GuardedRaises():
         self.err = err
         if pattern:
             self.pattern = re.compile(pattern)
-        self.requires = requires
+
+        if requires:
+            self.requires = { **requires }
+        else:
+            self.requires = {}
+
+        if require_tags:
+            if isinstance(require_tags, str):
+                self.require_tags = [ require_tags ]
+            else:
+                self.require_tags = [ *require_tags ]
+        else:
+            self.require_tags = []
 
     def isExpected(self, ex: Exception, cts: Mapping[str, Any]) -> bool:
         """
@@ -140,16 +184,18 @@ class GuardedRaises():
         :return: ``True`` if all requirements are met or no
             requirements are declared. ``False`` otherwise.
         """
-        if self.requires:
-            for r in self.requires:
-                if self.requires[r]:
-                    if r not in cts:
-                        return False
-                    else:
-                        if self.requires[r] != tryGetCatName(cts[r]):
-                            return False
+        cat_reqs_met = all(map(
+            lambda n: self.requires[n] and n in cts and self.requires[n] == tryGetCatName(cts[n]),
+            self.requires.keys()
+        ))
 
-        return True
+        tag_reqs_met = all(map(
+            lambda t: t and any(map(
+                lambda c: t in tryGetTagNames(c),
+                cts.values()
+            )), self.require_tags))
+
+        return cat_reqs_met and tag_reqs_met
 
     def __repr__(self) -> str:
         """
@@ -176,6 +222,7 @@ class ExCat(Cat):
     def __init__(self,
                  name: str = None,
                  comment: Optional[str] = None,
+                 tags: Optional[Union[str, Sequence[str]]] = None,
                  raises: Union[
                      None,
                      Type[Exception], GuardedRaises,
@@ -192,6 +239,8 @@ class ExCat(Cat):
 
         :param comment: The comment or a description for it.
 
+        :param tags: The set of tags assigned to this category.
+
         :param raises: Accepts an :class:`Exception` type,
             a :class:`GuardedRaises` object or a corresponding
             dictionary object or a sequence of any of such
@@ -203,7 +252,7 @@ class ExCat(Cat):
             was specified in one or more dictionary objects passed
             to ``raises``.
         """
-        super().__init__(name, comment)
+        super().__init__(name=name, comment=comment, tags=tags)
 
         self.raises: List[GuardedRaises] = []
         if raises:
@@ -292,9 +341,9 @@ class ExCat(Cat):
         """
         Tries to create the :class:`ExCat` from a dictionary.
         The dictionary has to define a value under the ``'name'`` key.
-        The optional ``'comment'`` and ``'raises'`` values, if such
-        keys are is present, are also used. The other values in the
-        dictionary are silently ignored.
+        The optional ``'comment'``, ``'raises'`` and ``'tags'``
+        values, if such keys are is present, are also used. All
+        other values in the dictionary are silently ignored.
 
         :param d: A dictionary with at least ``'name'`` and,
             optionally, ``'comment'`` and ``'raises'`` keys.
@@ -312,6 +361,8 @@ class ExCat(Cat):
         _d['name'] = d['name']
         if 'comment' in d:
             _d['comment'] = d['comment']
+        if 'tags' in d:
+            _d['tags'] = d['tags']
         if 'raises' in d:
             _d['raises'] = d['raises']
         return cls(**_d)
@@ -349,7 +400,7 @@ def tryExCat(ctg: Any, ctg_defs: Optional[Mapping[str, ExCat]] = None) -> Option
     if isinstance(ctg, ExCat):
         exctg = ctg
     elif isinstance(ctg, Cat):
-        exctg = ExCat(ctg.name, ctg.comment)
+        exctg = ExCat(ctg.name, ctg.comment, ctg.tags)
     elif isinstance(ctg, dict):
         exctg = ExCat.from_dict(ctg)
 

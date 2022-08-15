@@ -30,7 +30,7 @@ from hypothesis import given, example
 from hypothesis.strategies import SearchStrategy
 
 from .cat_strategies import cat, cats, cats_desc, subdivide
-from .cat_checks import parseCats, CatChecker
+from .cat_checks import parseCats, CatChecker, ExCat
 
 CATS_LAYOUT_ARG = '_layout_'
 CATS_DESC_ARG = '_desc_'
@@ -111,7 +111,7 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
     copy_desc(desc_dict, desc)
 
     data_layout: Dict[str, SearchStrategy[Any]] = {}
-    ctg_defs: Dict[str, Dict[str, Mapping[str, Any]]]  = {}
+    ctg_defs: Dict[str, Dict[str, ExCat]]  = {}
 
     for cls in desc:
         cls_layout = []
@@ -126,17 +126,15 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
                 ctg_desc = cls_val[ctg_name]
                 if isinstance(ctg_desc, SearchStrategy):
                     ctg_strategy = ctg_desc
-                    ctg_defs[cls][ctg_name] = {
-                        'name': ctg_name,
-                        'values': ctg_strategy
-                    }
+                    ctg_obj = ExCat(name=ctg_name)
                 else:
                     if 'values' in ctg_desc:
                         ctg_strategy = ctg_desc['values']
                     else:
                         raise KeyError('No strategy is defined for category "%s" of "%s" (missing "values")' % (ctg_name, cls))
-                    ctg_defs[cls][ctg_name] = ctg_desc
-                cls_layout.append(cat(ctg_name, ctg_strategy))
+                    ctg_obj = ExCat.from_dict({ 'name': ctg_name, **ctg_desc })
+                ctg_defs[cls][ctg_name] = ctg_obj
+                cls_layout.append(cat(ctg_obj, ctg_strategy))
             data_layout[cls] = subdivide(cls, *cls_layout)
 
     layout_arg = False
