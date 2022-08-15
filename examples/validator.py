@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis.strategies import integers, text
 from hypothesis_cats import CatChecker, given_divided, cat_example, with_cat_checker
 # import pytest
@@ -73,7 +73,8 @@ class User():
                 'err': TypeError,
                 'pattern': '^Name'
             },
-            'values': text(max_size=0)
+            'values': text(max_size=0),
+            'tags': '#abc'
         },
         'non-empty': text(min_size=1)
     },
@@ -100,9 +101,10 @@ class User():
              age=(-1, 'non-positive'))
 @cat_example(name=('user2', 'non-empty'), role=('admin', 'non-empty'),
              age=(20, 'positive'))
-@with_cat_checker
-def test_all_better(name, role, age):
-    u = User(name, role, age)
+def test_all_better(name, role, age, _layout_, _desc_):
+    assume(_layout_.hasTag('#abc'))
+    with CatChecker(_layout_, _desc_):
+        u = User(name, role, age)
 
 if __name__ == "__main__":
 #    test_name_empty()
