@@ -131,7 +131,10 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
                         'values': ctg_strategy
                     }
                 else:
-                    ctg_strategy = ctg_desc['values']
+                    if 'values' in ctg_desc:
+                        ctg_strategy = ctg_desc['values']
+                    else:
+                        raise KeyError('No strategy is defined for category "%s" of "%s" (missing "values")' % (ctg_name, cls))
                     ctg_defs[cls][ctg_name] = ctg_desc
                 cls_layout.append(cat(ctg_name, ctg_strategy))
             data_layout[cls] = subdivide(cls, *cls_layout)
