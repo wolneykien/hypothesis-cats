@@ -40,7 +40,7 @@ class GuardedRaisesDict(TypedDict):
     """
     err: Type[Exception]
     pattern: Union[str, Pattern]
-    requires: Mapping[str, str]
+    requires: Mapping[str, Union[str, Sequence[str]]]
     require_tags: Union[None, str, Sequence[str]]
 
 def tryGetCatName(ctg: Any) -> str:
@@ -106,7 +106,7 @@ class GuardedRaises():
     def __init__(self,
                  err: Union[None, Type[Exception]] = None,
                  pattern: Union[None, str, Pattern] = None,
-                 requires: Union[None, Mapping[str, str]] = None,
+                 requires: Union[None, Mapping[str, Union[str, Sequence[str]]]] = None,
                  require_tags: Union[None, str, Sequence[str]] = None):
         """
         :param err: An :class:`Exception` type that is expected to be
@@ -120,10 +120,14 @@ class GuardedRaises():
             the error message. If the match is unsuccessful that the
             exception expectation is also not met.
 
-        :param requires: A string-string dictionary declaring
-            category names of values of other classes. The declared
-            exception is only expected if the requirements are empty
-            or are met, including tag requirements.
+        :param requires: A string to string or string list dictionary
+            declaring category names of values of other classes.
+            If a list of category names is specified, then the
+            requirement is considered met if any name in the list
+            matches the actual category of the value.
+            The declared exception is only expected if the
+            requirements are empty or all are met, including tag
+            requirements.
 
         :param require_tags: Additional requirements for tags.
             If not empty, the declared exception is not expected
@@ -137,10 +141,14 @@ class GuardedRaises():
         if pattern:
             self.pattern = re.compile(pattern)
 
+        self.requires: Dict[str, Sequence[str]] = {}
         if requires:
-            self.requires = { **requires }
-        else:
-            self.requires = {}
+            for n in requires:
+                rval = requires[n]
+                if isinstance(rval, str):
+                    self.requires[n] = [ rval ]
+                else:
+                    self.requires[n] = rval
 
         if require_tags:
             if isinstance(require_tags, str):
@@ -187,7 +195,7 @@ class GuardedRaises():
             requirements are declared. ``False`` otherwise.
         """
         cat_reqs_met = all(map(
-            lambda n: self.requires[n] and n in cts and self.requires[n] == tryGetCatName(cts[n]),
+            lambda n: self.requires[n] and n in cts and tryGetCatName(cts[n]) in self.requires[n],
             self.requires.keys()
         ))
 
