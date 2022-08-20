@@ -31,6 +31,8 @@ import re
 from .cat_desc import Cat
 from .cat_strategies import cats
 
+from hypothesis import note
+
 class GuardedRaisesDict(TypedDict):
     """
     A helper class defining the dictionary layout for parsing
@@ -605,17 +607,22 @@ class CatChecker():
         is an expected exception, should be suppressed.
 
         :return: ``True`` if the given exception happens to be one
-        of the expected exceptions.
+            of the expected exceptions.
         """
+        expected = self.expectedRaises()
+
         if exc_value:
             for cls in self.cts:
                 exctg = self.tryGetCat(cls)
                 if exctg:
                     if exctg.isExpected(exc_value, self.cts):
                         return True
+            if expected:
+                note('One of the following exceptions was expected: %s.' % expected)
+            else:
+                note('No exceptions were expected.')
             return False
         else:
-            expected = self.expectedRaises()
             if expected:
                 raise AssertionError('One of the following exceptions was expected: %s' % expected)
 
