@@ -654,6 +654,8 @@ class CatChecker():
         else:
             if expected:
                 raise AssertionError('One of the following exceptions was expected: %s' % expected)
+            else:
+                event('No exceptions were expected')
 
         return False
 
