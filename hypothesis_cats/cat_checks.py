@@ -31,7 +31,7 @@ import re
 from .cat_desc import Cat
 from .cat_strategies import cats
 
-from hypothesis import note
+from hypothesis import note, event
 
 class GuardedRaisesDict(TypedDict):
     """
@@ -319,11 +319,30 @@ class ExCat(Cat):
             are met by the supplied category layout. ``False``
             otherwise.
         """
+        return self.expectedBy(ex, cts) is not None
+
+    def expectedBy(self, ex: Exception, cts: Mapping[str, Any]) -> Union[None, GuardedRaises]:
+        """
+        Checks if the given exception is expected under conditions,
+        determined by the supplied class-category layout.
+
+        :param ex: The :class:`Exception` object to examine.
+
+        :param cts: The category layout normally exposed by the
+            :func:`.cat_strategies.classify` and
+            :func:`.cat_strategies.subdivide` functions and accessed
+            via the :func:`.cat_strategies.cats` function.
+
+        :return: The expectation object declared for this category
+            that matches the supplied exception and have all its
+            requirements, if any, met by the supplied category layout.
+            ``None`` otherwise.
+        """
         for r in self.raises:
             if r.isExpected(ex, cts):
-                return True
+                return r
 
-        return False
+        return None
 
     def expectedRaises(self, cts: Mapping[str, Any]) -> List[GuardedRaises]:
         """
@@ -623,7 +642,9 @@ class CatChecker():
             for cls in self.cts:
                 exctg = self.tryGetCat(cls)
                 if exctg:
-                    if exctg.isExpected(exc_value, self.cts):
+                    by = exctg.expectedBy(exc_value, self.cts)
+                    if by is not None:
+                        event('Expected %s' % str(by))
                         return True
             if expected:
                 note('One of the following exceptions was expected: %s.' % expected)
