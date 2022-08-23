@@ -25,7 +25,7 @@ categorized data to test functions in form of strategies and examples.
 """
 
 from typing import Union, Any, Callable, Mapping, Sequence, Dict, \
-    Optional
+    Optional, Tuple
 
 from hypothesis import given, example
 from hypothesis.strategies import SearchStrategy
@@ -59,6 +59,36 @@ def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Uni
             out_desc[cls] = cls_dict
 
     return out_desc
+
+def _parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]) -> Tuple[Dict[str, SearchStrategy[Any]], Dict[str, Dict[str, ExCat]]]:
+    data_layout: Dict[str, SearchStrategy[Any]] = {}
+    ctg_defs: Dict[str, Dict[str, ExCat]]  = {}
+
+    for cls in desc:
+        cls_layout = []
+        cls_val = desc[cls]
+        if isinstance(cls_val, SearchStrategy):
+            data_layout[cls] = cls_val
+        elif isinstance(cls_val, bool):
+            pass
+        else:
+            ctg_defs[cls] = {}
+            for ctg_name in cls_val:
+                ctg_desc = cls_val[ctg_name]
+                if isinstance(ctg_desc, SearchStrategy):
+                    ctg_strategy = ctg_desc
+                    ctg_obj = ExCat(name=ctg_name)
+                else:
+                    if 'values' in ctg_desc:
+                        ctg_strategy = ctg_desc['values']
+                    else:
+                        raise KeyError('No strategy is defined for category "%s" of "%s" (missing "values")' % (ctg_name, cls))
+                    ctg_obj = ExCat.from_dict({ 'name': ctg_name, **ctg_desc })
+                ctg_defs[cls][ctg_name] = ctg_obj
+                cls_layout.append(cat(ctg_obj, ctg_strategy))
+            data_layout[cls] = subdivide(cls, *cls_layout, dictObj=CatLayout())
+
+    return (data_layout, ctg_defs)
 
 def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]], **desc_dict: Union[SearchStrategy, bool, Mapping[str, Union[SearchStrategy, Mapping[str, Any]]]]) -> Callable[[Callable], Callable]:
     """
@@ -111,32 +141,7 @@ def given_divided(*desc_list: Mapping[str, Union[SearchStrategy, bool, Mapping[s
         copy_desc(d, desc)
     copy_desc(desc_dict, desc)
 
-    data_layout: Dict[str, SearchStrategy[Any]] = {}
-    ctg_defs: Dict[str, Dict[str, ExCat]]  = {}
-
-    for cls in desc:
-        cls_layout = []
-        cls_val = desc[cls]
-        if isinstance(cls_val, SearchStrategy):
-            data_layout[cls] = cls_val
-        elif isinstance(cls_val, bool):
-            pass
-        else:
-            ctg_defs[cls] = {}
-            for ctg_name in cls_val:
-                ctg_desc = cls_val[ctg_name]
-                if isinstance(ctg_desc, SearchStrategy):
-                    ctg_strategy = ctg_desc
-                    ctg_obj = ExCat(name=ctg_name)
-                else:
-                    if 'values' in ctg_desc:
-                        ctg_strategy = ctg_desc['values']
-                    else:
-                        raise KeyError('No strategy is defined for category "%s" of "%s" (missing "values")' % (ctg_name, cls))
-                    ctg_obj = ExCat.from_dict({ 'name': ctg_name, **ctg_desc })
-                ctg_defs[cls][ctg_name] = ctg_obj
-                cls_layout.append(cat(ctg_obj, ctg_strategy))
-            data_layout[cls] = subdivide(cls, *cls_layout, dictObj=CatLayout())
+    (data_layout, ctg_defs) = _parseDivided(desc)
 
     layout_arg = False
     if CATS_LAYOUT_ARG not in data_layout:
@@ -262,3 +267,17 @@ def with_cat_checker(as_name: Optional[str] = None) -> Callable[[Callable], Call
         return wrapper
 
     return decor
+
+def parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]) -> Mapping[str, SearchStrategy[Any]]:
+    """
+    Parses the given value-class -> catecory-descriptor dictionary
+    defining value categories along with their strategies into
+    a name -> strategy dictionary suitable to be passed to
+    :func:`hypothesis.given` or any other function that expects
+    strategy keyword arguments.
+
+    :param desc: A value-class -> catecory-descriptor mapping.
+
+    :return: name -> strategy mapping for the given description.
+    """
+    return _parseDivided(desc)[0]
