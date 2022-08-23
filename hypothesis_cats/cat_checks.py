@@ -647,10 +647,9 @@ class CatChecker():
 
         :return: The corresponding category descriptor, if found.
         """
-        if self.ctg_defs and cls in self.ctg_defs:
-            return tryExCat(self.cts[cls],
-                            ctg_defs=self.ctg_defs[cls])
-        return None
+        cls_ctg_defs = self.ctg_defs[cls] \
+            if cls in self.ctg_defs else None
+        return tryExCat(self.cts[cls], ctg_defs=cls_ctg_defs)
 
     def expectedRaises(self) -> Mapping[str, List[GuardedRaises]]:
         """
