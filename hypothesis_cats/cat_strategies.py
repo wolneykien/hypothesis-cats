@@ -237,7 +237,7 @@ def cats_desc(draw: DrawFn, desc: Optional[Mapping[str, Any]] = None) -> Mapping
         shared_desc.update(desc)
     return shared_desc
 
-def nonequal(src: st.SearchStrategy[T]) -> Callable[[Any], st.SearchStrategy[T]]:
+def nonequal(src: st.SearchStrategy[T], eq_by: Optional[Callable[[T, T], bool]] = None) -> Callable[[Any], st.SearchStrategy[T]]:
     """
     Returns a function to be used with
     :func:`st.SearchStrategy.flatmap` that filters out values of the
@@ -246,9 +246,17 @@ def nonequal(src: st.SearchStrategy[T]) -> Callable[[Any], st.SearchStrategy[T]]
 
     :param src: A strategy to draw values from.
 
+    :param eq_by: An optional equality function.
+
     :return: A function that filters out values that are
         equal to values of the base, i.e. mapped, strategy.
     """
-    return lambda v0: src.filter(
-        lambda v: v != v0
-    )
+    if eq_by is not None:
+        eq_by_func = eq_by
+        return lambda v0: src.filter(
+            lambda v: not eq_by_func(v, v0)
+        )
+    else:
+        return lambda v0: src.filter(
+            lambda v: v != v0
+        )
