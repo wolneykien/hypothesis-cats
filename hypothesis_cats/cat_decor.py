@@ -60,9 +60,12 @@ def copy_desc(in_desc: Mapping[str, Union[SearchStrategy, bool, Mapping[str, Uni
 
     return out_desc
 
-def _parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]) -> Tuple[Dict[str, SearchStrategy[Any]], Dict[str, Dict[str, ExCat]]]:
+def _parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]], parentClass: Optional[str] = None, parentCat: Optional[str] = None) -> Tuple[Dict[str, SearchStrategy[Any]], Dict[str, Dict[str, ExCat]]]:
     data_layout: Dict[str, SearchStrategy[Any]] = {}
     ctg_defs: Dict[str, Dict[str, ExCat]]  = {}
+
+    if parentCat and not parentClass:
+        raise ValueError('Parent category name "%s" given, but no parent value class name specified' % parentCat)
 
     for cls in desc:
         cls_layout = []
@@ -72,7 +75,8 @@ def _parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union
         elif isinstance(cls_val, bool):
             pass
         else:
-            ctg_defs[cls] = {}
+            pcls = ((parentClass + '.') if parentClass else '') + cls
+            ctg_defs[pcls] = {}
             for ctg_name in cls_val:
                 ctg_desc = cls_val[ctg_name]
                 if isinstance(ctg_desc, SearchStrategy):
@@ -84,9 +88,11 @@ def _parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union
                     else:
                         raise KeyError('No strategy is defined for category "%s" of "%s" (missing "values")' % (ctg_name, cls))
                     ctg_obj = ExCat.from_dict({ 'name': ctg_name, **ctg_desc })
-                ctg_defs[cls][ctg_name] = ctg_obj
+                if parentCat and parentClass:
+                    ctg_obj.setParent(parentClass, parentCat)
+                ctg_defs[pcls][ctg_name] = ctg_obj
                 cls_layout.append(cat(ctg_obj, ctg_strategy))
-            data_layout[cls] = subdivide(cls, *cls_layout, dictObj=CatLayout())
+            data_layout[cls] = subdivide(pcls, *cls_layout, dictObj=CatLayout())
 
     return (data_layout, ctg_defs)
 
@@ -268,7 +274,7 @@ def with_cat_checker(as_name: Optional[str] = None) -> Callable[[Callable], Call
 
     return decor
 
-def parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]]) -> Mapping[str, SearchStrategy[Any]]:
+def parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[SearchStrategy, Mapping[str, Any]]]]], parentClass: Optional[str] = None, parentCat: Optional[str] = None) -> Mapping[str, SearchStrategy[Any]]:
     """
     Parses the given value-class -> catecory-descriptor dictionary
     defining value categories along with their strategies into
@@ -278,6 +284,18 @@ def parseDivided(desc: Mapping[str, Union[SearchStrategy, bool, Dict[str, Union[
 
     :param desc: A value-class -> catecory-descriptor mapping.
 
-    :return: name -> strategy mapping for the given description.
+    :param parentClass: An optional name of the parent value class.
+        If specified, the value class names in ``desc`` are
+        automatically prefixed with it + ``.``.
+
+    :param parentCat: An optional name of the parent value class
+        category. If specified along with ``parentClass`` it is
+        automatically added to the set of requirements in each
+        category in ``desc`` that declares exception expectations.
+
+    :return: A name -> strategy mapping for the given description.
+
+    :raises ValueError: If ``parentCat`` if specified but not
+        ``parentClass``.
     """
-    return _parseDivided(desc)[0]
+    return _parseDivided(desc, parentClass=parentClass, parentCat=parentCat)[0]

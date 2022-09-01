@@ -141,14 +141,14 @@ class GuardedRaises():
         if pattern:
             self.pattern = re.compile(pattern)
 
-        self.requires: Dict[str, Sequence[str]] = {}
+        self.requires: Dict[str, List[str]] = {}
         if requires:
             for n in requires:
                 rval = requires[n]
                 if isinstance(rval, str):
                     self.requires[n] = [ rval ]
                 else:
-                    self.requires[n] = rval
+                    self.requires[n] = [ *rval ]
 
         if require_tags:
             if isinstance(require_tags, str):
@@ -220,6 +220,9 @@ class GuardedRaises():
         if self.pattern:
             estr = estr + "(/" + self.pattern.pattern + "/)"
 
+        if self.requires:
+            estr = estr + " having " + repr(self.requires)
+
         return estr
 
 class ExCat(Cat):
@@ -243,7 +246,9 @@ class ExCat(Cat):
                              GuardedRaisesDict
                          ]
                      ]
-                 ] = None):
+                 ] = None,
+                 parentClass: Optional[str] = None,
+                 parentCat: Optional[str] = None):
         """
         :param name: The name of the category.
 
@@ -258,9 +263,17 @@ class ExCat(Cat):
             corresponding :class:`GuardedRaises` objects are
             constructed automatically.
 
+        :param parentClass: An optional name of the parent value class.
+
+        :param parentCat: An optional name of the parent value class
+            category. If specified along with ``parentClass`` it is
+            automatically added to the set of requirements of each
+            exception expectation, declared by this category.
+
         :raises ValueError: If name is empty or no exception type
             was specified in one or more dictionary objects passed
-            to ``raises``.
+            to ``raises``. Also, if ``parentCat`` is specified but not
+            ``parentClass``
         """
         super().__init__(name=name, comment=comment, tags=tags)
 
@@ -271,6 +284,9 @@ class ExCat(Cat):
                     self.appendRaises(r)
             else:
                 self.appendRaises(raises)
+
+        if parentCat and not parentClass:
+            raise ValueError('Parent category name "%s" given, but no parent value class name specified' % parentCat)
 
     def appendRaises(self,
                      raises: Union[
@@ -300,6 +316,22 @@ class ExCat(Cat):
             self.raises.append(raises)
         else:
             raise TypeError('appendRaises(r) expects an exception type or a GuardedRaises object optionallly represented by a plain dictionary.')
+
+    def setParent(self, parentClass: str, parentCat: str):
+        """
+        Adds the specified value->cat requirement to every exception
+        expectation declared by this category.
+
+        :param parentClass: A name of the parent value class.
+
+        :param parentCat: A name of the category of that value class.
+        """
+        for r in self.raises:
+            if parentClass in r.requires:
+                if parentCat not in r.requires[parentClass]:
+                    r.requires[parentClass].append(parentCat)
+            else:
+                r.requires[parentClass] = [parentCat]
 
     def isExpected(self, ex: Exception, cts: Mapping[str, Any]) -> bool:
         """
